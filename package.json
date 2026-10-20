@@ -3,7 +3,7 @@
     "displayName": "EditBox",
     "id": "com.github.rexlevin.cb-editbox",
     "private": true,
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "EditBox - 轻量桌面文本编辑器",
     "author": "rexlevin",
     "license": "Apache-2.0",

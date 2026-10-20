@@ -13,6 +13,7 @@
         "zoomIn": "Zoom In",
         "zoomOut": "Zoom Out",
         "zoomReset": "Reset Zoom to 100%",
+        "toggleWordWrap": "Toggle Word Wrap",
         "findNext": "Find Next",
         "findPrev": "Find Previous",
         "selectAllMatches": "Select All Matches",

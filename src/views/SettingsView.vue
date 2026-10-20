@@ -196,6 +196,7 @@ const shortcuts = computed(() => [
     { key: 'zoomIn', keys: ['Ctrl', '='], label: 'act.zoomIn' },
     { key: 'zoomOut', keys: ['Ctrl', '-'], label: 'act.zoomOut' },
     { key: 'zoomReset', keys: ['Ctrl', '0'], label: 'act.zoomReset' },
+    { key: 'wordWrap', keys: ['Alt', 'Z'], label: 'act.toggleWordWrap' },
     { key: 'find', keys: ['Ctrl', 'F'], label: 'menu.find' },
     { key: 'replace', keys: ['Ctrl', 'H'], label: 'menu.replace' },
     { key: 'settings', keys: ['Ctrl', ','], label: 'menu.settings' },

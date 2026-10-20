@@ -468,6 +468,32 @@ function resolveLocale() {
     return String(app.getLocale() || '').toLowerCase().startsWith('zh') ? 'zh-CN' : 'en-US';
 }
 
+// 语言分组（与 NotepadNext 一致）：先按名称（忽略大小写）排序，
+// 再把首字母相同的连续项合并——仅一项时平铺，≥2 项时收入以该首字母命名的子菜单
+function buildLanguageItems() {
+    const names = [...LANGUAGES].sort((a, b) => {
+        const x = a.toLowerCase();
+        const y = b.toLowerCase();
+        return x < y ? -1 : x > y ? 1 : 0;
+    });
+    const toItem = (name) => ({ label: name, click: sendAction('language.set', name) });
+    const items = [];
+    let i = 0;
+    while (i < names.length) {
+        const letter = names[i][0].toUpperCase();
+        let j = i;
+        while (j < names.length && names[j][0].toUpperCase() === letter) j += 1;
+        const group = names.slice(i, j);
+        if (group.length === 1) {
+            items.push(toItem(group[0]));
+        } else {
+            items.push({ label: letter, submenu: group.map(toItem) });
+        }
+        i = j;
+    }
+    return items;
+}
+
 function buildMenu() {
     const settings = getStore('settings');
     const wordWrap = settings.get('wordWrap') !== false; // 默认开
@@ -521,6 +547,7 @@ function buildMenu() {
                 { type: 'separator' },
                 {
                     label: M.wordWrap, type: 'checkbox', checked: wordWrap,
+                    accelerator: 'Alt+Z',
                     click: (item) => {
                         getStore('settings').set('wordWrap', item.checked);
                         sendAction('view.wordWrap', item.checked)();
@@ -537,10 +564,7 @@ function buildMenu() {
         },
         {
             label: M.language,
-            submenu: LANGUAGES.map(name => ({
-                label: name,
-                click: sendAction('language.set', name)
-            }))
+            submenu: buildLanguageItems()
         },
         {
             label: M.options,

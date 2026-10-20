@@ -13,6 +13,7 @@
         "zoomIn": "放大界面",
         "zoomOut": "缩小界面",
         "zoomReset": "重置缩放为 100%",
+        "toggleWordWrap": "切换自动换行",
         "findNext": "下一个匹配项",
         "findPrev": "上一个匹配项",
         "selectAllMatches": "选中全部匹配项",

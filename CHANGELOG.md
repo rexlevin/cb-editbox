@@ -4,6 +4,24 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.0.4] - 2026-10-20
+
+### feat | 新功能 / Features
+
+新增 Alt+Z 快捷键，用于切换自动换行开关
+语言菜单按首字母分组展示
+新增"切换自动换行"快捷键条目并在设置界面展示
+
+Add the Alt+Z shortcut to toggle word wrap
+Group the Language menu entries by first letter
+Register the "Toggle Word Wrap" entry in the Settings shortcuts list
+
+### build | 构建 / Build
+
+更新 .canbox-app 配置，新增 category 字段为 utility
+
+Update the .canbox-app config with a new category field set to utility
+
 ## [0.0.3] - 2026-09-29
 
 ### feat | 新功能 / Features

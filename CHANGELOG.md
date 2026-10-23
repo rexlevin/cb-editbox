@@ -4,6 +4,32 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.0.5] - 2026-10-23
+
+### feat | 新功能 / Features
+
+新增「文件 > 最近打开」菜单，最多保留 10 条记录，支持清除
+新增 Tab 宽度设置（2 / 4 / 8）与空格 ↔ Tab 缩进转换命令
+新增空白符与换行符显示开关
+新增外部删除检测：文件在磁盘上被删除时提示保留缓冲区或关闭标签页
+新增状态栏编码手动切换（UTF-8 / UTF-8 BOM / UTF-16 / GB18030 / Big5 等），切换后按新编码重写文件
+设置界面快捷键条目补齐编辑器内置键位（行/块注释、移动行、多光标、删除行）
+新增 Dockerfile、Properties files、TOML 语法高亮
+
+Add a Recent Files submenu (up to 10 entries) with a clear action
+Add a tab width setting (2 / 4 / 8) and spaces/tabs indentation conversion commands
+Add whitespace and line-ending visibility toggles
+Detect external deletion and offer to keep the buffer or close the tab
+Add manual encoding switching from the status bar (UTF-8 / UTF-8 BOM / UTF-16 / GB18030 / Big5, etc.), rewriting the file in the new encoding
+Register built-in editor keybindings in the Settings shortcuts list (line/block comment, move line, multi-cursor, delete line)
+Add syntax highlighting for Dockerfile, Properties files and TOML
+
+### chore | 维护 / Maintenance
+
+版本号更新至 0.0.5
+
+Bump version to 0.0.5
+
 ## [0.0.4] - 2026-10-20
 
 ### feat | 新功能 / Features

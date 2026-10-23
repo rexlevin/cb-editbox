@@ -43,6 +43,54 @@ function backupDir() {
 }
 
 // ---------------------------------------------------------------------------
+// 最近打开文件（canbox-core store，上限 10 条）
+// ---------------------------------------------------------------------------
+const RECENT_LIMIT = 10;
+
+// 读取时过滤已从磁盘移除的文件并去重
+function readRecentFiles() {
+    try {
+        const list = getStore('recent').get('files');
+        if (!Array.isArray(list)) return [];
+        const seen = new Set();
+        const valid = list.filter((p) => {
+            if (typeof p !== 'string' || seen.has(p) || !fs.existsSync(p)) return false;
+            seen.add(p);
+            return true;
+        }).slice(0, RECENT_LIMIT);
+        // 已从磁盘移除的条目从存储中一并清理
+        if (valid.length !== list.length) writeRecentFiles(valid);
+        return valid;
+    } catch (error) {
+        return [];
+    }
+}
+
+function writeRecentFiles(list) {
+    try {
+        getStore('recent').set('files', list.slice(0, RECENT_LIMIT));
+    } catch (error) { /* ignore */ }
+}
+
+function addRecentFile(filePath) {
+    if (typeof filePath !== 'string' || !fs.existsSync(filePath)) return;
+    const list = readRecentFiles().filter(p => p !== filePath);
+    list.unshift(filePath);
+    writeRecentFiles(list);
+    rebuildMenu();
+}
+
+function removeRecentFile(filePath) {
+    writeRecentFiles(readRecentFiles().filter(p => p !== filePath));
+    rebuildMenu();
+}
+
+function clearRecentFiles() {
+    writeRecentFiles([]);
+    rebuildMenu();
+}
+
+// ---------------------------------------------------------------------------
 // IPC: 文件
 // ---------------------------------------------------------------------------
 ipcMain.handle('editbox.openFileDialog', async () => {
@@ -137,6 +185,21 @@ ipcMain.handle('editbox.writeFileForceUtf8', (_e, payload) => {
 ipcMain.handle('editbox.revealFile', (_e, filePath) => {
     shell.showItemInFolder(filePath);
     return { success: true };
+});
+
+// ---------------------------------------------------------------------------
+// IPC: 最近打开文件
+// ---------------------------------------------------------------------------
+ipcMain.handle('editbox.recentGet', () => readRecentFiles());
+
+ipcMain.handle('editbox.recentAdd', (_e, filePath) => {
+    addRecentFile(filePath);
+    return { ok: true };
+});
+
+ipcMain.handle('editbox.recentRemove', (_e, filePath) => {
+    removeRecentFile(filePath);
+    return { ok: true };
 });
 
 ipcMain.handle('editbox.watchRegister', (_e, filePath, mtimeMs, size) => {
@@ -434,26 +497,30 @@ const MENU_I18N = {
         file: '文件(&F)(F)', edit: '编辑(&E)(E)', search: '搜索(&S)(S)', view: '视图(&V)(V)',
         language: '语言(&L)(L)', options: '选项(&O)(O)', help: '帮助(&H)(H)',
         new: '新建(&N)', open: '打开...(&O)', save: '保存(&S)', saveAs: '另存为...(&A)',
+        recent: '最近打开(&E)', noRecent: '（无最近文件）', clearRecent: '清除最近记录',
         reload: '重新载入(&R)', close: '关闭(&C)', closeOthers: '关闭其他(&T)', closeAll: '全部关闭(&L)',
         exit: '退出(&X)',
         undo: '撤销(&U)', redo: '重做(&R)', cut: '剪切(&T)', copy: '复制(&C)', paste: '粘贴(&P)',
-        selectAll: '全选(&A)',
+        selectAll: '全选(&A)', spacesToTabs: '空格转 Tab', tabsToSpaces: 'Tab 转空格',
         find: '查找...(&F)', replace: '替换...(&R)',
         zoomIn: '放大(&I)', zoomOut: '缩小(&O)', zoomReset: '重置缩放(&R)',
         wordWrap: '自动换行(&W)', lineNumbers: '显示行号(&L)',
+        showWhitespace: '显示空白符(&P)', showEol: '显示换行符(&E)',
         settings: '设置...(&S)', about: '关于 EditBox(&A)'
     },
     'en-US': {
         file: 'File(&F)(F)', edit: 'Edit(&E)(E)', search: 'Search(&S)(S)', view: 'View(&V)(V)',
         language: 'Language(&L)(L)', options: 'Options(&O)(O)', help: 'Help(&H)(H)',
         new: 'New(&N)', open: 'Open...(&O)', save: 'Save(&S)', saveAs: 'Save As...(&A)',
+        recent: 'Recent Files(&E)', noRecent: '(No Recent Files)', clearRecent: 'Clear Recent Files',
         reload: 'Reload(&R)', close: 'Close(&C)', closeOthers: 'Close Others(&T)', closeAll: 'Close All(&L)',
         exit: 'Exit(&X)',
         undo: 'Undo(&U)', redo: 'Redo(&R)', cut: 'Cut(&T)', copy: 'Copy(&C)', paste: 'Paste(&P)',
-        selectAll: 'Select All(&A)',
+        selectAll: 'Select All(&A)', spacesToTabs: 'Spaces to Tabs', tabsToSpaces: 'Tabs to Spaces',
         find: 'Find...(&F)', replace: 'Replace...(&R)',
         zoomIn: 'Zoom In(&I)', zoomOut: 'Zoom Out(&O)', zoomReset: 'Reset Zoom(&R)',
         wordWrap: 'Word Wrap(&W)', lineNumbers: 'Show Line Numbers(&L)',
+        showWhitespace: 'Show Whitespace(&P)', showEol: 'Show Line Endings(&E)',
         settings: 'Settings...(&S)', about: 'About EditBox(&A)'
     }
 };
@@ -494,10 +561,26 @@ function buildLanguageItems() {
     return items;
 }
 
+function buildRecentItems(M) {
+    const files = readRecentFiles();
+    if (files.length === 0) {
+        return [{ label: M.noRecent, enabled: false }];
+    }
+    const items = files.map((filePath) => ({
+        label: `${path.basename(filePath)}  —  ${filePath}`.replace(/&/g, '&&'),
+        click: sendAction('file.openRecent', filePath)
+    }));
+    items.push({ type: 'separator' });
+    items.push({ label: M.clearRecent, click: clearRecentFiles });
+    return items;
+}
+
 function buildMenu() {
     const settings = getStore('settings');
     const wordWrap = settings.get('wordWrap') !== false; // 默认开
     const lineNumbers = settings.get('lineNumbers') !== false; // 默认开
+    const showWhitespace = settings.get('showWhitespace') === true;
+    const showEol = settings.get('showEol') === true;
     const M = MENU_I18N[resolveLocale()];
 
     const template = [
@@ -506,6 +589,7 @@ function buildMenu() {
             submenu: [
                 { label: M.new, accelerator: 'CmdOrCtrl+N', click: sendAction('file.new') },
                 { label: M.open, accelerator: 'CmdOrCtrl+O', click: sendAction('file.open') },
+                { label: M.recent, submenu: buildRecentItems(M) },
                 { type: 'separator' },
                 { label: M.save, accelerator: 'CmdOrCtrl+S', click: sendAction('file.save') },
                 { label: M.saveAs, accelerator: 'CmdOrCtrl+Shift+S', click: sendAction('file.saveAs') },
@@ -528,7 +612,10 @@ function buildMenu() {
                 { label: M.copy, accelerator: 'CmdOrCtrl+C', click: sendAction('edit.copy') },
                 { label: M.paste, accelerator: 'CmdOrCtrl+V', click: sendAction('edit.paste') },
                 { type: 'separator' },
-                { label: M.selectAll, accelerator: 'CmdOrCtrl+A', click: sendAction('edit.selectAll') }
+                { label: M.selectAll, accelerator: 'CmdOrCtrl+A', click: sendAction('edit.selectAll') },
+                { type: 'separator' },
+                { label: M.spacesToTabs, click: sendAction('edit.spacesToTabs') },
+                { label: M.tabsToSpaces, click: sendAction('edit.tabsToSpaces') }
             ]
         },
         {
@@ -558,6 +645,20 @@ function buildMenu() {
                     click: (item) => {
                         getStore('settings').set('lineNumbers', item.checked);
                         sendAction('view.lineNumbers', item.checked)();
+                    }
+                },
+                {
+                    label: M.showWhitespace, type: 'checkbox', checked: showWhitespace,
+                    click: (item) => {
+                        getStore('settings').set('showWhitespace', item.checked);
+                        sendAction('view.showWhitespace', item.checked)();
+                    }
+                },
+                {
+                    label: M.showEol, type: 'checkbox', checked: showEol,
+                    click: (item) => {
+                        getStore('settings').set('showEol', item.checked);
+                        sendAction('view.showEol', item.checked)();
                     }
                 }
             ]

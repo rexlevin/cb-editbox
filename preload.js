@@ -6,6 +6,7 @@
  *   - readFile(path) / readFileBackup(backupId)
  *   - writeFile(payload) / writeFileForceUtf8(payload)
  *   - revealFile(path)
+ *   - recentGet() / recentAdd(path) / recentRemove(path)
  *   - saveBackup({path, content})
  *   - sessionGet() / sessionUpdate(payload)
  *   - watchRegister(path, mtimeMs, size) / watchUnregister(path)
@@ -31,6 +32,10 @@ contextBridge.exposeInMainWorld('editbox', {
     writeFile: (payload) => ipcRenderer.invoke('editbox.writeFile', payload),
     writeFileForceUtf8: (payload) => ipcRenderer.invoke('editbox.writeFileForceUtf8', payload),
     revealFile: (filePath) => ipcRenderer.invoke('editbox.revealFile', filePath),
+
+    recentGet: () => ipcRenderer.invoke('editbox.recentGet'),
+    recentAdd: (filePath) => ipcRenderer.invoke('editbox.recentAdd', filePath),
+    recentRemove: (filePath) => ipcRenderer.invoke('editbox.recentRemove', filePath),
 
     saveBackup: (payload) => ipcRenderer.invoke('editbox.saveBackup', payload),
 

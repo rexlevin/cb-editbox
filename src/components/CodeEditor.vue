@@ -5,12 +5,12 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { EditorView, ViewPlugin, keymap } from '@codemirror/view';
+import { EditorView, ViewPlugin, keymap, Decoration, WidgetType } from '@codemirror/view';
 import { EditorState, Compartment } from '@codemirror/state';
 import { indentWithTab, undo, redo, selectAll } from '@codemirror/commands';
 import { basicSetup } from 'codemirror';
 import { openSearchPanel, search, searchPanelOpen } from '@codemirror/search';
-import { LanguageDescription } from '@codemirror/language';
+import { LanguageDescription, indentUnit } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { useEditorStore } from '@/stores/editor';
@@ -28,6 +28,12 @@ const languageComp = new Compartment();
 const wrapComp = new Compartment();
 const lineNumComp = new Compartment();
 const themeComp = new Compartment();
+const indentComp = new Compartment();
+const whitespaceComp = new Compartment();
+
+let tabSize = 4;
+let showWhitespace = false;
+let showEol = false;
 
 const cursorSave = { line: 1, col: 1, scrollTop: 0 };
 
@@ -101,8 +107,72 @@ const searchPanelDecorator = ViewPlugin.fromClass(class {
     }
 });
 
+// ---------------------------------------------------------------------------
+// 缩进配置：Tab 宽度同时用于显示宽度与自动缩进单位
+// ---------------------------------------------------------------------------
+function indentExtensions(size) {
+    return [EditorState.tabSize.of(size), indentUnit.of(' '.repeat(size))];
+}
+
+// ---------------------------------------------------------------------------
+// 空白符 / 换行符可见性（按可视区域生成装饰，不扫描整篇文档）
+// ---------------------------------------------------------------------------
+const spaceMark = Decoration.mark({ class: 'cm-ws-space' });
+const tabMark = Decoration.mark({ class: 'cm-ws-tab' });
+
+class EolWidget extends WidgetType {
+    eq() { return true; }
+    toDOM() {
+        const el = document.createElement('span');
+        el.className = 'cm-ws-eol';
+        el.textContent = '↵';
+        return el;
+    }
+    ignoreEvent() { return true; }
+}
+const eolMark = Decoration.widget({ widget: new EolWidget(), side: 1 });
+
+function buildWhitespaceDecorations(view2, showWs, eolVisible) {
+    if (!showWs && !eolVisible) return Decoration.none;
+    const doc = view2.state.doc;
+    const ranges = [];
+    for (const { from, to } of view2.visibleRanges) {
+        let pos = from;
+        while (pos <= to) {
+            const line = doc.lineAt(pos);
+            if (showWs) {
+                for (let i = 0; i < line.text.length; i++) {
+                    const ch = line.text[i];
+                    if (ch === ' ') ranges.push(spaceMark.range(line.from + i, line.from + i + 1));
+                    else if (ch === '\t') ranges.push(tabMark.range(line.from + i, line.from + i + 1));
+                }
+            }
+            if (eolVisible && line.to < doc.length) ranges.push(eolMark.range(line.to));
+            if (line.to >= doc.length) break;
+            pos = line.to + 1;
+        }
+    }
+    return Decoration.set(ranges, true);
+}
+
+function whitespaceExtensions(showWs, eolVisible) {
+    if (!showWs && !eolVisible) return [];
+    return ViewPlugin.fromClass(class {
+        constructor(view2) {
+            this.decorations = buildWhitespaceDecorations(view2, showWs, eolVisible);
+        }
+        update(update) {
+            if (update.docChanged || update.viewportChanged) {
+                this.decorations = buildWhitespaceDecorations(update.view, showWs, eolVisible);
+            }
+        }
+    }, {
+        decorations: v => v.decorations
+    });
+}
+
 onMounted(async () => {
-    // 读取视图/字体/主题设置
+    // 读取视图/字体/主题/缩进设置
     let wordWrap = true, lineNumbers = true, dark = false;
     try {
         const s = await window.editbox.settingsGetAll();
@@ -110,6 +180,9 @@ onMounted(async () => {
         if (s.lineNumbers === false) lineNumbers = false;
         if (s.editorFontFamily) fontFamily.value = s.editorFontFamily;
         if (s.editorFontSize) fontSize.value = s.editorFontSize;
+        tabSize = [2, 4, 8].includes(Number(s.tabSize)) ? Number(s.tabSize) : 4;
+        showWhitespace = s.showWhitespace === true;
+        showEol = s.showEol === true;
         dark = s.theme === 'dark'
             || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     } catch (e) { /* 用默认值 */ }
@@ -123,6 +196,8 @@ onMounted(async () => {
             searchPanelDecorator,
             keymap.of([indentWithTab]),
             languageComp.of([]),
+            indentComp.of(indentExtensions(tabSize)),
+            whitespaceComp.of(whitespaceExtensions(showWhitespace, showEol)),
             wrapComp.of(wordWrap ? EditorView.lineWrapping : []),
             lineNumComp.of(lineNumbers ? [] : EditorView.theme({ '.cm-gutters': { display: 'none !important' } })),
             themeComp.of(dark ? oneDark : []),
@@ -199,6 +274,62 @@ function setLineNumbers(on) {
     if (!view || view.destroyed) return;
     view.dispatch({ effects: lineNumComp.reconfigure(on ? [] : EditorView.theme({ '.cm-gutters': { display: 'none !important' } })) });
 }
+function setTabSize(size) {
+    const next = [2, 4, 8].includes(Number(size)) ? Number(size) : 4;
+    if (next === tabSize) return;
+    tabSize = next;
+    if (view && !view.destroyed) {
+        view.dispatch({ effects: indentComp.reconfigure(indentExtensions(tabSize)) });
+    }
+}
+function setShowWhitespace(on) {
+    const next = Boolean(on);
+    if (next === showWhitespace) return;
+    showWhitespace = next;
+    applyWhitespace();
+}
+function setShowEol(on) {
+    const next = Boolean(on);
+    if (next === showEol) return;
+    showEol = next;
+    applyWhitespace();
+}
+function applyWhitespace() {
+    if (!view || view.destroyed) return;
+    view.dispatch({ effects: whitespaceComp.reconfigure(whitespaceExtensions(showWhitespace, showEol)) });
+}
+
+// 缩进转换：有选区时作用于选区覆盖的整行，否则作用于整篇文档
+function convertIndent(mode) {
+    if (!view || view.destroyed) return;
+    const state = view.state;
+    const sel = state.selection.main;
+    const from = state.doc.lineAt(sel.from).from;
+    const to = state.doc.lineAt(sel.to).to;
+    const text = state.doc.sliceString(from, to);
+    const converted = text.split('\n').map((line) => {
+        const lead = (/^[ \t]*/.exec(line) || [''])[0];
+        if (!lead) return line;
+        let width = 0;
+        for (const ch of lead) width += ch === '\t' ? tabSize : 1;
+        const indent = mode === 'tabs'
+            ? '\t'.repeat(Math.floor(width / tabSize)) + ' '.repeat(width % tabSize)
+            : ' '.repeat(width);
+        return indent + line.slice(lead.length);
+    }).join('\n');
+    if (converted === text) return;
+    view.dispatch({ changes: { from, to, insert: converted } });
+}
+function spacesToTabs() {
+    if (!view || view.destroyed) return;
+    view.focus();
+    convertIndent('tabs');
+}
+function tabsToSpaces() {
+    if (!view || view.destroyed) return;
+    view.focus();
+    convertIndent('spaces');
+}
 function setEditorFont(family, size) {
     if (family) fontFamily.value = family;
     if (size) fontSize.value = size;
@@ -252,7 +383,9 @@ function pasteCmd() {
 }
 
 defineExpose({
-    focusEditor, setLanguage, setWordWrap, setLineNumbers, setEditorFont, setAppTheme,
+    focusEditor, setLanguage, setWordWrap, setLineNumbers, setTabSize,
+    setShowWhitespace, setShowEol, setEditorFont, setAppTheme,
+    spacesToTabs, tabsToSpaces,
     undoCmd, redoCmd, selectAllCmd, openFind, openReplace, cutCmd, copyCmd, pasteCmd
 });
 
@@ -274,6 +407,40 @@ onBeforeUnmount(() => {
     font-family: var(--editor-font-family, Consolas, 'Courier New', monospace);
     font-size: var(--editor-font-size, 15px);
     line-height: 1.6;
+}
+/* 空白符 / 换行符可见性：不改变文本内容与布局，仅叠加视觉标记 */
+.cm-host :deep(.cm-ws-space) {
+    position: relative;
+}
+.cm-host :deep(.cm-ws-space)::before {
+    content: '·';
+    position: absolute;
+    inset: 0;
+    text-align: center;
+    line-height: inherit;
+    color: currentColor;
+    opacity: 0.35;
+    pointer-events: none;
+    user-select: none;
+}
+.cm-host :deep(.cm-ws-tab) {
+    position: relative;
+}
+.cm-host :deep(.cm-ws-tab)::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    top: 0;
+    line-height: inherit;
+    color: currentColor;
+    opacity: 0.35;
+    pointer-events: none;
+    user-select: none;
+}
+.cm-host :deep(.cm-ws-eol) {
+    opacity: 0.35;
+    pointer-events: none;
+    user-select: none;
 }
 /* 面板浮在编辑器右上角：脱离布局流，不占（不挤压）编辑区；宽度固定，不随窗口拉伸 */
 .cm-host :deep(.cm-panels-top:has(.cm-panel.cm-search)) {

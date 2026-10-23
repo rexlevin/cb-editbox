@@ -89,6 +89,12 @@ async function onMenuAction(action, payload) {
             await openDialog();
             break;
         }
+        case 'file.openRecent': {
+            const opened = await store.openPaths([payload]);
+            if (!opened.includes(payload)) await window.editbox.recentRemove(payload);
+            focusActiveEditor();
+            break;
+        }
         case 'file.save':
             if (store.activeId !== null) await store.saveTab(store.activeId);
             break;
@@ -129,6 +135,12 @@ async function onMenuAction(action, payload) {
         case 'edit.selectAll':
             activeEditorApi.value?.selectAllCmd();
             break;
+        case 'edit.spacesToTabs':
+            activeEditorApi.value?.spacesToTabs();
+            break;
+        case 'edit.tabsToSpaces':
+            activeEditorApi.value?.tabsToSpaces();
+            break;
         case 'search.find':
             activeEditorApi.value?.openFind();
             break;
@@ -149,6 +161,12 @@ async function onMenuAction(action, payload) {
             break;
         case 'view.lineNumbers':
             activeEditorApi.value?.setLineNumbers(payload);
+            break;
+        case 'view.showWhitespace':
+            activeEditorApi.value?.setShowWhitespace(payload);
+            break;
+        case 'view.showEol':
+            activeEditorApi.value?.setShowEol(payload);
             break;
         case 'language.set':
             activeEditorApi.value?.setLanguage(payload);
@@ -171,6 +189,9 @@ function onSettingApplied(key, value) {
     const editors = Object.values(editorRefs.value);
     if (key === 'wordWrap') editors.forEach(e => e.setWordWrap(value));
     else if (key === 'lineNumbers') editors.forEach(e => e.setLineNumbers(value));
+    else if (key === 'tabSize') editors.forEach(e => e.setTabSize(value));
+    else if (key === 'showWhitespace') editors.forEach(e => e.setShowWhitespace(value));
+    else if (key === 'showEol') editors.forEach(e => e.setShowEol(value));
     else if (key === 'editorFontFamily') editors.forEach(e => e.setEditorFont(value, null));
     else if (key === 'editorFontSize') editors.forEach(e => e.setEditorFont(null, value));
     else if (key === 'tabFontFamily') document.documentElement.style.setProperty('--tab-font-family', value);

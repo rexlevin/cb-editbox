@@ -85,6 +85,7 @@
         "themeDark": "深色",
         "themeSystem": "跟随系统",
         "zoomLevel": "界面缩放",
+        "tabSize": "Tab 宽度",
         "tabFont": "Tab 字体",
         "tabFontSize": "Tab 字号",
         "statusFont": "状态栏字体",

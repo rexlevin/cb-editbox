@@ -85,6 +85,7 @@
         "themeDark": "Dark",
         "themeSystem": "Follow System",
         "zoomLevel": "Zoom Level",
+        "tabSize": "Tab Width",
         "tabFont": "Tab Font",
         "tabFontSize": "Tab Font Size",
         "statusFont": "Status Bar Font",

@@ -43,7 +43,7 @@ A standalone settings window for appearance, fonts, keyboard shortcuts and about
 ## Features
 
 - **Multi-tab editing** — open many files at once; switching tabs never loses your cursor position, scroll position or in-progress edits. Tabs support a right-click context menu (close / close others / close all).
-- **File operations** — new, open, save and save-as, plus drag-and-drop to open files.
+- **File operations** — new, open, save and save-as, plus drag-and-drop to open files and a recent-files list (last 10) in the File menu.
 - **Syntax highlighting** — 30+ languages including JavaScript, TypeScript, Python, Go, Rust, Java, C/C++, C#, HTML, CSS, Vue, JSON, Markdown, SQL, Shell, YAML, Dockerfile, TOML and properties files, with manual language override.
 - **Find and replace** — in-document search and replace.
 - **Encoding support** — automatic encoding detection (including BOM), one-click encoding conversion, and a confirmation prompt when saving would lose characters.
@@ -52,7 +52,7 @@ A standalone settings window for appearance, fonts, keyboard shortcuts and about
 - **External change watching** — files modified on disk reload automatically when untouched, and prompt for conflict resolution when you have unsaved edits.
 - **Safe close** — closing a tab or window with unsaved changes offers Save / Don't Save / Cancel.
 - **Large files** — files larger than 10 MB open in a degraded read-only mode to stay responsive.
-- **Display options** — word-wrap and line-number toggles, adjustable interface and editor fonts, and light / dark / system themes (the editor theme follows automatically).
+- **Display options** — word-wrap, line-number, whitespace and line-ending visibility toggles, tab width (2 / 4 / 8) with spaces-to-tabs and tabs-to-spaces conversion, adjustable interface and editor fonts, and light / dark / system themes (the editor theme follows automatically).
 - **Interface zoom** — Ctrl + mouse wheel or `Ctrl + =` / `Ctrl + -` / `Ctrl + 0`; the zoom level and window size and position are remembered across restarts.
 - **Internationalization** — Simplified Chinese and English.
 - **Native menus** — File, Edit, Search, View, Language, Options and Help, with a standalone settings window (appearance, fonts, keyboard shortcuts, about).
@@ -67,10 +67,10 @@ EditBox is a Canbox app and requires the [Canbox](https://canbox-io.github.io/ca
 ## Usage
 
 1. Launch EditBox from Canbox Manager.
-2. Create a new file (`Ctrl + N`) or open an existing one (`Ctrl + O`); you can also drag files into the window.
+2. Create a new file (`Ctrl + N`) or open an existing one (`Ctrl + O`); you can also drag files into the window or reopen one from **File > Recent Files**.
 3. Edit across tabs — each tab keeps its own undo history, cursor and scroll state.
 4. Use the **Search** menu for find (`Ctrl + F`) and replace (`Ctrl + H`).
-5. Check or switch encoding and line endings from the status bar; switch syntax language from the **Language** menu.
+5. Check or switch encoding and line endings from the status bar; switch syntax language from the **Language** menu. Toggle whitespace, line endings, word wrap and line numbers from the **View** menu; convert indentation between spaces and tabs from the **Edit** menu.
 6. Open settings with `Ctrl + ,` to change theme, zoom, fonts and to review all keyboard shortcuts.
 
 ### Keyboard shortcuts

@@ -96,10 +96,12 @@ export const useEditorStore = defineStore('editor', {
 
         // ---------- 打开 / 新建 ----------
         async openPaths(paths) {
+            const opened = [];
             for (const p of paths || []) {
                 const existing = this.tabs.find(t => t.path === p);
                 if (existing) {
                     this.activeId = existing.id;
+                    opened.push(p);
                     continue;
                 }
                 const ret = await window.editbox.readFile(p);
@@ -127,9 +129,12 @@ export const useEditorStore = defineStore('editor', {
                     scrollTop: 0
                 });
                 await window.editbox.watchRegister(p, ret.mtimeMs, ret.size);
+                await window.editbox.recentAdd(p);
                 this.activeId = tab.id;
+                opened.push(p);
             }
             this.persistSession();
+            return opened;
         },
 
         newTab() {
@@ -288,6 +293,7 @@ export const useEditorStore = defineStore('editor', {
                 tab.mtimeMs = ret.mtimeMs;
                 tab.size = ret.size;
                 await window.editbox.watchRegister(target, ret.mtimeMs, ret.size);
+                await window.editbox.recentAdd(target);
                 this.persistSession();
                 return { ok: true };
             }
@@ -308,6 +314,7 @@ export const useEditorStore = defineStore('editor', {
                     tab.mtimeMs = ret2.mtimeMs;
                     tab.size = ret2.size;
                     await window.editbox.watchRegister(target, ret2.mtimeMs, ret2.size);
+                    await window.editbox.recentAdd(target);
                     this.persistSession();
                     return { ok: true };
                 }

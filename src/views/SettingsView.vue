@@ -43,6 +43,15 @@
                         <span class="zoom-val">{{ Math.round(zoomLevel * 100) }}%</span>
                     </div>
                 </div>
+
+                <div class="row">
+                    <label>{{ t('settings.tabSize') }}</label>
+                    <el-radio-group :model-value="tabSize" @change="onTabSize">
+                        <el-radio :value="2">2</el-radio>
+                        <el-radio :value="4">4</el-radio>
+                        <el-radio :value="8">8</el-radio>
+                    </el-radio-group>
+                </div>
             </div>
 
             <!-- 字体 -->
@@ -166,6 +175,7 @@ const active = ref('ui');
 const localeMode = ref('system');
 const theme = ref('light');
 const zoomLevel = ref(1);
+const tabSize = ref(4);
 const tabFontFamily = ref('');
 const tabFontSize = ref(13);
 const statusFontFamily = ref('');
@@ -225,6 +235,11 @@ function onZoomChange(v) {
     zoomLevel.value = v / 100;
     // 缩放在主窗口生效（设置窗口自身不缩放）
     window.editbox.zoomSet(v / 100);
+}
+
+function onTabSize(v) {
+    tabSize.value = v;
+    persist('tabSize', v);
 }
 
 function onTabFont(v) {
@@ -295,6 +310,7 @@ onMounted(async () => {
         localeMode.value = s.localeMode || 'system';
         theme.value = s.theme || 'light';
         zoomLevel.value = await window.editbox.zoomGet();
+        tabSize.value = [2, 4, 8].includes(Number(s.tabSize)) ? Number(s.tabSize) : 4;
         tabFontFamily.value = s.tabFontFamily || '';
         tabFontSize.value = parseInt(s.tabFontSize) || 13;
         statusFontFamily.value = s.statusFontFamily || '';

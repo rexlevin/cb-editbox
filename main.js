@@ -203,10 +203,15 @@ ipcMain.handle('editbox.recentRemove', (_e, filePath) => {
 });
 
 ipcMain.handle('editbox.watchRegister', (_e, filePath, mtimeMs, size) => {
-    watcher.watchFile(filePath, { mtimeMs, size }, (changedPath, stat) => {
+    const send = (channel, payload) => {
         if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('editbox.fileExternalChanged', { path: changedPath, stat });
+            mainWindow.webContents.send(channel, payload);
         }
+    };
+    watcher.watchFile(filePath, { mtimeMs, size }, (changedPath, stat) => {
+        send('editbox.fileExternalChanged', { path: changedPath, stat });
+    }, (deletedPath) => {
+        send('editbox.fileDeleted', { path: deletedPath });
     });
     return { ok: true };
 });

@@ -364,6 +364,43 @@ export const useEditorStore = defineStore('editor', {
             this.persistSession();
         },
 
+        // ---------- 编码转换 ----------
+        // 已保存文件：用新编码立即重写（内容取当前缓冲区）；未命名文档仅记录保存时使用的编码
+        async setTabEncoding(tabId, encoding, hasBom) {
+            const tab = this.tabs.find(t => t.id === tabId);
+            if (!tab || !encoding) return;
+            const nextBom = Boolean(hasBom);
+            if (tab.encoding === encoding && Boolean(tab.hasBom) === nextBom) return;
+            if (tab.untitled || !tab.path) {
+                tab.encoding = encoding;
+                tab.hasBom = nextBom;
+                tab.dirty = true;
+                this.scheduleBackup(tab.id);
+                this.persistSession();
+                return;
+            }
+            const ret = await window.editbox.writeFile({
+                path: tab.path,
+                content: tab.content,
+                encoding,
+                hasBom: nextBom,
+                eol: tab.eol
+            });
+            if (!ret.ok) {
+                ElMessage.error(ret.lossy
+                    ? i18n.global.t('msg.lossyEncoding', { encoding: encoding.toUpperCase() })
+                    : i18n.global.t('msg.saveFailed'));
+                return;
+            }
+            tab.encoding = encoding;
+            tab.hasBom = nextBom;
+            tab.dirty = false;
+            tab.backupId = null;
+            tab.mtimeMs = ret.mtimeMs;
+            tab.size = ret.size;
+            this.persistSession();
+        },
+
         // ---------- 关闭 ----------
         async closeTab(tabId, { skipConfirm = false } = {}) {
             const t = i18n.global.t;
@@ -488,6 +525,26 @@ export const useEditorStore = defineStore('editor', {
                     // 脏文档：置冲突标记，由 EditorView 提示条处理
                     tab.externalConflict = { mtimeMs: ret.mtimeMs, size: ret.size };
                 }
+            });
+        },
+
+        // ---------- 外部删除推送 ----------
+        bindFileDeleted() {
+            window.editbox.onFileDeleted(async ({ path: p }) => {
+                const tab = this.tabs.find(t2 => t2.path === p);
+                if (!tab) return;
+                const t = i18n.global.t;
+                const answer = await ElMessageBox.confirm(
+                    t('msg.fileDeletedBody', { name: tab.name }), t('msg.fileDeletedTitle'),
+                    {
+                        confirmButtonText: t('btn.keepBuffer'),
+                        cancelButtonText: t('btn.closeTab'),
+                        distinguishCancelAndClose: true,
+                        type: 'warning'
+                    }
+                ).catch((action) => action);
+                // 确认 / 右上角关闭 = 保留缓冲区；取消 = 关闭标签页
+                if (answer === 'cancel') await this.closeTab(tab.id, { skipConfirm: true });
             });
         },
 

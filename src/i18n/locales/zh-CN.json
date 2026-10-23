@@ -14,6 +14,13 @@
         "zoomOut": "缩小界面",
         "zoomReset": "重置缩放为 100%",
         "toggleWordWrap": "切换自动换行",
+        "toggleComment": "切换行注释",
+        "toggleBlockComment": "切换块注释",
+        "moveLineUp": "当前行上移",
+        "moveLineDown": "当前行下移",
+        "addCursorAbove": "在上方增加光标",
+        "addCursorBelow": "在下方增加光标",
+        "deleteLine": "删除当前行",
         "findNext": "下一个匹配项",
         "findPrev": "上一个匹配项",
         "selectAllMatches": "选中全部匹配项",
@@ -51,7 +58,9 @@
         "reload": "重新载入",
         "reloadDiscard": "重新载入（丢弃本地修改）",
         "ignore": "忽略",
-        "utf8Save": "改用 UTF-8 保存"
+        "utf8Save": "改用 UTF-8 保存",
+        "keepBuffer": "保留缓冲区",
+        "closeTab": "关闭标签页"
     },
     "msg": {
         "tooLarge": "文件超过 10MB，未打开",
@@ -67,6 +76,9 @@
         "closeWindowBody": "有 {count} 个未保存的标签页，是否全部保存后关闭？",
         "externalReloaded": "「{name}」已在磁盘上被外部修改，已自动重新载入",
         "externalConflict": "「{name}」在磁盘上被外部修改，与未保存的本地修改存在冲突",
+        "fileDeletedTitle": "文件已被删除",
+        "fileDeletedBody": "「{name}」已在磁盘上被删除。保留缓冲区可继续编辑并另存为；关闭标签页将丢弃内容。",
+        "lossyEncoding": "当前内容无法用 {encoding} 编码完整保存，已保持原编码",
         "recoveredTitle": "已恢复未保存内容",
         "recoveredBody": "检测到上次未正常退出，已从备份恢复未保存的内容（标记为未保存状态）。"
     },

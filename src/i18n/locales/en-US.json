@@ -14,6 +14,13 @@
         "zoomOut": "Zoom Out",
         "zoomReset": "Reset Zoom to 100%",
         "toggleWordWrap": "Toggle Word Wrap",
+        "toggleComment": "Toggle Line Comment",
+        "toggleBlockComment": "Toggle Block Comment",
+        "moveLineUp": "Move Line Up",
+        "moveLineDown": "Move Line Down",
+        "addCursorAbove": "Add Cursor Above",
+        "addCursorBelow": "Add Cursor Below",
+        "deleteLine": "Delete Line",
         "findNext": "Find Next",
         "findPrev": "Find Previous",
         "selectAllMatches": "Select All Matches",
@@ -51,7 +58,9 @@
         "reload": "Reload",
         "reloadDiscard": "Reload (discard local changes)",
         "ignore": "Ignore",
-        "utf8Save": "Save as UTF-8"
+        "utf8Save": "Save as UTF-8",
+        "keepBuffer": "Keep Buffer",
+        "closeTab": "Close Tab"
     },
     "msg": {
         "tooLarge": "File exceeds 10MB and was not opened",
@@ -67,6 +76,9 @@
         "closeWindowBody": "{count} tab(s) have unsaved changes. Save all before closing?",
         "externalReloaded": "\"{name}\" was modified externally on disk and has been reloaded",
         "externalConflict": "\"{name}\" was modified externally, conflicting with unsaved local changes",
+        "fileDeletedTitle": "File Deleted",
+        "fileDeletedBody": "\"{name}\" has been deleted from disk. Keep the buffer to continue editing and save it elsewhere, or close the tab to discard the content.",
+        "lossyEncoding": "The current content cannot be fully represented in {encoding}; the original encoding was kept",
         "recoveredTitle": "Unsaved Content Recovered",
         "recoveredBody": "Last session did not shut down properly. Unsaved content has been restored from backup and marked as unsaved."
     },

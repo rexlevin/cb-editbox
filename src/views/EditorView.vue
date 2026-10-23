@@ -249,6 +249,7 @@ onMounted(async () => {
 
     await store.restoreSession();
     store.bindExternalChanged();
+    store.bindFileDeleted();
     window.editbox.onRequestClose(() => {
         store.confirmClose({ fromRequestClose: true });
     });

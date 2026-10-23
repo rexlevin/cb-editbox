@@ -49,7 +49,7 @@ A standalone settings window for appearance, fonts, keyboard shortcuts and about
 - **Encoding support** — automatic encoding detection (including BOM), one-click encoding conversion, and a confirmation prompt when saving would lose characters.
 - **Line endings** — CRLF / LF / CR statistics with mixed-ending detection and manual conversion from the status bar.
 - **Auto-save backup & crash recovery** — dirty documents are backed up automatically; after an abnormal exit, unsaved content is silently restored on the next launch, with no startup prompts.
-- **External change watching** — files modified on disk reload automatically when untouched, and prompt for conflict resolution when you have unsaved edits.
+- **External change watching** — files modified on disk reload automatically when untouched, and prompt for conflict resolution when you have unsaved edits; if a file is deleted externally, you can keep the buffer or close the tab.
 - **Safe close** — closing a tab or window with unsaved changes offers Save / Don't Save / Cancel.
 - **Large files** — files larger than 10 MB open in a degraded read-only mode to stay responsive.
 - **Display options** — word-wrap, line-number, whitespace and line-ending visibility toggles, tab width (2 / 4 / 8) with spaces-to-tabs and tabs-to-spaces conversion, adjustable interface and editor fonts, and light / dark / system themes (the editor theme follows automatically).
@@ -88,6 +88,11 @@ EditBox is a Canbox app and requires the [Canbox](https://canbox-io.github.io/ca
 | `Ctrl + X` / `Ctrl + C` / `Ctrl + V` | Cut / Copy / Paste    |
 | `Ctrl + A`                               | Select all            |
 | `Ctrl + =` / `Ctrl + -` / `Ctrl + 0` | Zoom in / out / reset |
+| `Ctrl + /` | Toggle line comment |
+| `Alt + A` | Toggle block comment |
+| `Alt + ↑` / `Alt + ↓` | Move line up / down |
+| `Ctrl + Alt + ↑` / `Ctrl + Alt + ↓` | Add cursor above / below |
+| `Ctrl + Shift + K` | Delete line |
 | `Ctrl + Wheel`                           | Zoom                  |
 | `Ctrl + ,`                               | Settings              |
 | `Ctrl + Q`                               | Exit                  |

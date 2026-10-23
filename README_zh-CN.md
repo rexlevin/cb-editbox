@@ -44,7 +44,7 @@ EditBox 是一款快速、贴近原生体验的编辑器，专注日常文本与
 
 - **多标签页编辑** — 可同时打开多个文件，切换标签页不会丢失光标位置、滚动位置和正在编辑的内容；标签支持右键菜单（关闭 / 关闭其他 / 全部关闭）。
 - **文件操作** — 新建、打开、保存、另存为，支持拖拽文件到窗口打开。
-- **语法高亮** — 支持 JavaScript、TypeScript、Python、Go、Rust、Java、C/C++、C#、HTML、CSS、Vue、JSON、Markdown、SQL、Shell、YAML 等 30+ 种语言，并可手动切换语言。
+- **语法高亮** — 支持 JavaScript、TypeScript、Python、Go、Rust、Java、C/C++、C#、HTML、CSS、Vue、JSON、Markdown、SQL、Shell、YAML、Dockerfile、TOML、Properties 等 30+ 种语言，并可手动切换语言。
 - **查找与替换** — 文档内查找和替换。
 - **编码支持** — 自动探测文件编码（含 BOM 识别），可一键转换编码；当保存会导致字符丢失时弹出二次确认。
 - **换行符处理** — 支持 CRLF / LF / CR 统计、混行检测，并可在状态栏手动转换。

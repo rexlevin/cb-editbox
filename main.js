@@ -417,7 +417,7 @@ const LANGUAGES = [
     'Plain Text', 'JavaScript', 'TypeScript', 'HTML', 'CSS', 'JSON', 'Markdown',
     'Python', 'Go', 'Rust', 'Java', 'C', 'C++', 'C#', 'Shell', 'SQL',
     'YAML', 'XML', 'Vue', 'JSX', 'TSX', 'PHP', 'Ruby', 'Perl', 'Lua', 'R',
-    'Dart', 'Kotlin', 'Swift'
+    'Dart', 'Kotlin', 'Swift', 'Dockerfile', 'Properties files', 'TOML'
 ];
 
 function sendAction(action, payload) {

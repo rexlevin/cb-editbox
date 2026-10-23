@@ -44,7 +44,7 @@ A standalone settings window for appearance, fonts, keyboard shortcuts and about
 
 - **Multi-tab editing** — open many files at once; switching tabs never loses your cursor position, scroll position or in-progress edits. Tabs support a right-click context menu (close / close others / close all).
 - **File operations** — new, open, save and save-as, plus drag-and-drop to open files.
-- **Syntax highlighting** — 30+ languages including JavaScript, TypeScript, Python, Go, Rust, Java, C/C++, C#, HTML, CSS, Vue, JSON, Markdown, SQL, Shell, YAML and more, with manual language override.
+- **Syntax highlighting** — 30+ languages including JavaScript, TypeScript, Python, Go, Rust, Java, C/C++, C#, HTML, CSS, Vue, JSON, Markdown, SQL, Shell, YAML, Dockerfile, TOML and properties files, with manual language override.
 - **Find and replace** — in-document search and replace.
 - **Encoding support** — automatic encoding detection (including BOM), one-click encoding conversion, and a confirmation prompt when saving would lose characters.
 - **Line endings** — CRLF / LF / CR statistics with mixed-ending detection and manual conversion from the status bar.

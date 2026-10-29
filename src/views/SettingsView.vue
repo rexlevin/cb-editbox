@@ -52,6 +52,12 @@
                         <el-radio :value="8">8</el-radio>
                     </el-radio-group>
                 </div>
+
+                <div class="row">
+                    <label>{{ t('settings.markdownPreview') }}</label>
+                    <el-switch :model-value="markdownLivePreview" @change="onMarkdownPreview" />
+                    <span class="desc-inline">{{ t('settings.markdownPreviewDesc') }}</span>
+                </div>
             </div>
 
             <!-- 字体 -->
@@ -176,6 +182,7 @@ const localeMode = ref('system');
 const theme = ref('light');
 const zoomLevel = ref(1);
 const tabSize = ref(4);
+const markdownLivePreview = ref(true);
 const tabFontFamily = ref('');
 const tabFontSize = ref(13);
 const statusFontFamily = ref('');
@@ -251,6 +258,11 @@ function onTabSize(v) {
     persist('tabSize', v);
 }
 
+function onMarkdownPreview(v) {
+    markdownLivePreview.value = v;
+    persist('markdownLivePreview', v);
+}
+
 function onTabFont(v) {
     tabFontFamily.value = v;
     persist('tabFontFamily', v);
@@ -320,6 +332,7 @@ onMounted(async () => {
         theme.value = s.theme || 'light';
         zoomLevel.value = await window.editbox.zoomGet();
         tabSize.value = [2, 4, 8].includes(Number(s.tabSize)) ? Number(s.tabSize) : 4;
+        markdownLivePreview.value = s.markdownLivePreview !== false;
         tabFontFamily.value = s.tabFontFamily || '';
         tabFontSize.value = parseInt(s.tabFontSize) || 13;
         statusFontFamily.value = s.statusFontFamily || '';
@@ -405,6 +418,10 @@ onBeforeUnmount(() => {
     color: var(--el-text-color-regular);
 }
 .unit {
+    color: var(--el-text-color-secondary);
+    font-size: var(--ui-font-size);
+}
+.desc-inline {
     color: var(--el-text-color-secondary);
     font-size: var(--ui-font-size);
 }

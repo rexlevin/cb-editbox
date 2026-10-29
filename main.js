@@ -7,10 +7,11 @@
  * 职责：窗口与缩放、文件读写（编码探测/EOL 统计/有损检测）、外部修改监视、
  * 未保存备份与会话持久化、脏文档关闭拦截协议。
  */
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell, net, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { pathToFileURL } = require('url');
 const { detectEncoding, decode, encodeWithLossyCheck, bomBuffer } = require('./lib/encoding');
 const { analyzeEol, convertEol, normalizeLf } = require('./lib/eol');
 const watcher = require('./lib/watcher');
@@ -18,6 +19,15 @@ const { listFonts } = require('./lib/fonts');
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const EOL_KEYS = ['crlf', 'lf', 'cr'];
+
+// 本地图片协议：渲染进程把 Markdown 中的相对路径解析为绝对路径后，
+// 通过 editbox-media://local/?p=<encodeURIComponent(path)> 交给主进程读取。
+// （http://localhost:5181 页面无法直接加载 file:// 资源）
+const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico', '.avif']);
+protocol.registerSchemesAsPrivileged([{
+    scheme: 'editbox-media',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true }
+}]);
 
 let mainWindow = null;
 let forceClose = false;
@@ -185,6 +195,18 @@ ipcMain.handle('editbox.writeFileForceUtf8', (_e, payload) => {
 ipcMain.handle('editbox.revealFile', (_e, filePath) => {
     shell.showItemInFolder(filePath);
     return { success: true };
+});
+
+// Markdown 链接：Ctrl+Click 在系统浏览器中打开（仅放行 http/https/mailto）
+ipcMain.handle('editbox.openExternal', (_e, url) => {
+    try {
+        const parsed = new URL(String(url));
+        if (!['http:', 'https:', 'mailto:'].includes(parsed.protocol)) return { ok: false };
+        shell.openExternal(parsed.toString());
+        return { ok: true };
+    } catch (error) {
+        return { ok: false };
+    }
 });
 
 // ---------------------------------------------------------------------------
@@ -502,6 +524,22 @@ function sendAction(action, payload) {
     };
 }
 
+// Markdown 实时渲染开关：菜单点击与渲染进程快捷键共用
+function setMarkdownPreview(enabled, syncMenu) {
+    const value = !!enabled;
+    try {
+        getStore('settings').set('markdownLivePreview', value);
+    } catch (error) { /* 持久化失败不阻断切换 */ }
+    sendAction('view.markdownPreview', value)();
+    if (syncMenu) rebuildMenu();
+}
+
+ipcMain.handle('editbox.toggleMarkdownPreview', () => {
+    const current = getStore('settings').get('markdownLivePreview') !== false; // 默认开
+    setMarkdownPreview(!current, true);
+    return { ok: true, enabled: !current };
+});
+
 // 原生菜单文案（主进程独立维护，含 Alt 助记符 &；& 前字符显示为下划线，括号为字面量）
 const MENU_I18N = {
     'zh-CN': {
@@ -687,12 +725,12 @@ function buildMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: M.markdownPreview, type: 'checkbox', checked: markdownPreview,
-                    accelerator: 'CmdOrCtrl+Shift+M',
-                    click: (item) => {
-                        getStore('settings').set('markdownLivePreview', item.checked);
-                        sendAction('view.markdownPreview', item.checked)();
-                    }
+                    // 快捷键由渲染进程的编辑器键位处理：
+                    // CodeMirror 会 preventDefault，原生菜单加速键永远收不到，
+                    // 因此这里不注册 accelerator，仅把快捷键显示在菜单文案里
+                    label: `${M.markdownPreview}  ${process.platform === 'darwin' ? 'Cmd+Shift+M' : 'Ctrl+Shift+M'}`,
+                    type: 'checkbox', checked: markdownPreview,
+                    click: (item) => setMarkdownPreview(item.checked, false)
                 }
             ]
         },
@@ -726,7 +764,26 @@ function rebuildMenu() {
     }
 }
 
+function registerMediaProtocol() {
+    protocol.handle('editbox-media', async (request) => {
+        try {
+            const target = new URL(request.url).searchParams.get('p');
+            if (!target) return new Response('Bad Request', { status: 400 });
+            const filePath = path.resolve(target);
+            if (!IMAGE_EXTENSIONS.has(path.extname(filePath).toLowerCase())) {
+                return new Response('Forbidden', { status: 403 });
+            }
+            const stat = fs.statSync(filePath);
+            if (!stat.isFile()) return new Response('Not Found', { status: 404 });
+            return await net.fetch(pathToFileURL(filePath).toString());
+        } catch (error) {
+            return new Response('Not Found', { status: 404 });
+        }
+    });
+}
+
 app.whenReady().then(() => {
+    registerMediaProtocol();
     rebuildMenu();
     createWindow();
 });

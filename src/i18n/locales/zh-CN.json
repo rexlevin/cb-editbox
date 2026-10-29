@@ -87,7 +87,8 @@
         "fileDeletedBody": "「{name}」已在磁盘上被删除。保留缓冲区可继续编辑并另存为；关闭标签页将丢弃内容。",
         "lossyEncoding": "当前内容无法用 {encoding} 编码完整保存，已保持原编码",
         "recoveredTitle": "已恢复未保存内容",
-        "recoveredBody": "检测到上次未正常退出，已从备份恢复未保存的内容（标记为未保存状态）。"
+        "recoveredBody": "检测到上次未正常退出，已从备份恢复未保存的内容（标记为未保存状态）。",
+        "markdownTooLarge": "文档超过 5000 行或 3MB，已自动关闭 Markdown 实时渲染"
     },
     "settings": {
         "title": "设置",
@@ -105,6 +106,8 @@
         "themeSystem": "跟随系统",
         "zoomLevel": "界面缩放",
         "tabSize": "Tab 宽度",
+        "markdownPreview": "Markdown 实时渲染",
+        "markdownPreviewDesc": "叠加渲染样式；表格与公式在源码下方追加预览",
         "tabFont": "Tab 字体",
         "tabFontSize": "Tab 字号",
         "statusFont": "状态栏字体",

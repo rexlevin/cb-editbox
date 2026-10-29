@@ -5,17 +5,65 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { EditorView, ViewPlugin, keymap, Decoration, WidgetType } from '@codemirror/view';
+import {
+    EditorView, ViewPlugin, keymap, Decoration, WidgetType,
+    lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection,
+    dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine
+} from '@codemirror/view';
 import { EditorState, Compartment } from '@codemirror/state';
-import { indentWithTab, undo, redo, selectAll } from '@codemirror/commands';
-import { basicSetup } from 'codemirror';
-import { openSearchPanel, search, searchPanelOpen } from '@codemirror/search';
-import { LanguageDescription, indentUnit, language } from '@codemirror/language';
+import {
+    indentWithTab, undo, redo, selectAll,
+    history, historyKeymap, defaultKeymap
+} from '@codemirror/commands';
+import {
+    openSearchPanel, search, searchPanelOpen, searchKeymap, highlightSelectionMatches
+} from '@codemirror/search';
+import {
+    LanguageDescription, indentUnit, language,
+    bracketMatching, foldGutter, foldKeymap, indentOnInput,
+    syntaxHighlighting, defaultHighlightStyle
+} from '@codemirror/language';
+import {
+    autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap
+} from '@codemirror/autocomplete';
 import { languages } from '@codemirror/language-data';
+import { markdown as markdownLang, markdownLanguage } from '@codemirror/lang-markdown';
+import { ElMessage } from 'element-plus';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { showMinimap } from '@replit/codemirror-minimap';
 import { useEditorStore } from '@/stores/editor';
 import { markdownLivePreview } from './markdownLivePreview';
+
+// basicSetup 的自定义等价版本：去掉 lintKeymap
+// （其 Mod-Shift-m 会打开空诊断面板 "No diagnostics"，与 Markdown 实时渲染快捷键冲突；
+//   且该绑定会吞掉按键，导致原生菜单加速键失效），其余基础能力保持一致
+const editorSetup = [
+    lineNumbers(),
+    highlightActiveLineGutter(),
+    highlightSpecialChars(),
+    history(),
+    foldGutter(),
+    drawSelection(),
+    dropCursor(),
+    EditorState.allowMultipleSelections.of(true),
+    indentOnInput(),
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    bracketMatching(),
+    closeBrackets(),
+    autocompletion(),
+    rectangularSelection(),
+    crosshairCursor(),
+    highlightActiveLine(),
+    highlightSelectionMatches(),
+    keymap.of([
+        ...closeBracketsKeymap,
+        ...defaultKeymap,
+        ...searchKeymap,
+        ...historyKeymap,
+        ...foldKeymap,
+        ...completionKeymap
+    ])
+];
 
 const props = defineProps({
     tab: { type: Object, required: true }
@@ -40,6 +88,17 @@ let showWhitespace = false;
 let showEol = false;
 let markdownPreview = true;
 
+// 大文档阈值：超过任一项即关闭实时渲染并提示一次，避免装饰计算拖慢编辑
+const MARKDOWN_MAX_LINES = 5000;
+const MARKDOWN_MAX_BYTES = 3 * 1024 * 1024;
+let previewInstalled = false;
+let previewTooLargeWarned = false;
+let docTooLarge = false;
+
+function docIsTooLarge(doc) {
+    return doc.lines > MARKDOWN_MAX_LINES || doc.length > MARKDOWN_MAX_BYTES;
+}
+
 // 缩略图：默认关闭，由视图菜单/设置开启；超过行数阈值的大文档自动不渲染
 const minimapOn = ref(false);
 const MINIMAP_MAX_LINES = 5000;
@@ -54,6 +113,15 @@ const fontStyle = computed(() => ({
     '--editor-font-size': fontSize.value
 }));
 
+// 语言支持加载：Markdown 默认是严格 CommonMark，这里改用含 GFM
+// （表格、任务列表、删除线、自动链接）的基础语言
+function loadLanguageSupport(desc) {
+    if (desc.name === 'Markdown') {
+        return Promise.resolve(markdownLang({ base: markdownLanguage }));
+    }
+    return desc.load();
+}
+
 function loadLanguage(view2, filename) {
     const desc = LanguageDescription.matchFilename(languages, filename || '');
     store.setTabLanguage(props.tab.id, desc ? desc.name : null);
@@ -61,7 +129,7 @@ function loadLanguage(view2, filename) {
         view2.dispatch({ effects: languageComp.reconfigure([]) });
         return;
     }
-    desc.load().then((support) => {
+    loadLanguageSupport(desc).then((support) => {
         if (view2 && !view2.destroyed) {
             view2.dispatch({ effects: languageComp.reconfigure(support) });
             applyMarkdownPreview();
@@ -82,7 +150,7 @@ function setLanguage(name) {
         view.dispatch({ effects: languageComp.reconfigure([]) });
         return;
     }
-    desc.load().then((support) => {
+    loadLanguageSupport(desc).then((support) => {
         if (view && !view.destroyed) {
             view.dispatch({ effects: languageComp.reconfigure(support) });
             applyMarkdownPreview();
@@ -91,10 +159,24 @@ function setLanguage(name) {
 }
 
 // Markdown 实时渲染：仅对语言为 Markdown 的标签页生效，由视图菜单/快捷键切换
+// 超过行数/体积阈值时自动关闭并提示一次
 function applyMarkdownPreview() {
     if (!view || view.destroyed) return;
-    const on = markdownPreview && props.tab.language === 'Markdown';
-    view.dispatch({ effects: markdownComp.reconfigure(on ? markdownLivePreview() : []) });
+    const isMarkdown = props.tab.language === 'Markdown';
+    const tooLarge = isMarkdown && docIsTooLarge(view.state.doc);
+    docTooLarge = tooLarge;
+    if (isMarkdown && markdownPreview && tooLarge && !previewTooLargeWarned) {
+        previewTooLargeWarned = true;
+        ElMessage.warning(t('msg.markdownTooLarge'));
+    }
+    const on = markdownPreview && isMarkdown && !tooLarge;
+    if (on === previewInstalled) return;
+    previewInstalled = on;
+    view.dispatch({
+        effects: markdownComp.reconfigure(on
+            ? markdownLivePreview({ getFilePath: () => props.tab.path })
+            : [])
+    });
 }
 
 // 面板按钮已图标化、开关已符号化，此处补上悬浮提示
@@ -222,11 +304,25 @@ onMounted(async () => {
     const state = EditorState.create({
         doc: props.tab.content,
         extensions: [
-            basicSetup,
+            editorSetup,
             // 查找/替换面板固定在编辑器顶部（默认在底部）
             search({ top: true }),
             searchPanelDecorator,
-            keymap.of([indentWithTab]),
+            keymap.of([
+                {
+                    // Ctrl+Shift+M：切换 Markdown 实时渲染。
+                    // CodeMirror 处理按键时会 preventDefault，原生菜单加速键收不到，
+                    // 因此这里直接转发给主进程，由主进程持久化设置并广播给所有编辑器
+                    key: 'Mod-Shift-m',
+                    run: () => {
+                        if (window.editbox && window.editbox.toggleMarkdownPreview) {
+                            window.editbox.toggleMarkdownPreview();
+                        }
+                        return true;
+                    }
+                },
+                indentWithTab
+            ]),
             languageComp.of([]),
             indentComp.of(indentExtensions(tabSize)),
             whitespaceComp.of(whitespaceExtensions(showWhitespace, showEol)),
@@ -244,6 +340,10 @@ onMounted(async () => {
                     cursorSave.scrollTop = update.view.scrollDOM.scrollTop;
                 }
                 if (update.docChanged) {
+                    // 跨越大文档阈值时实时启停渲染（缩回阈值内则恢复）
+                    if (docIsTooLarge(update.state.doc) !== docTooLarge) {
+                        applyMarkdownPreview();
+                    }
                     store.markDirty(props.tab.id, {
                         content: update.state.doc.toString(),
                         cursorLine: cursorSave.line,
@@ -678,6 +778,10 @@ onBeforeUnmount(() => {
     border-radius: 4px;
     vertical-align: middle;
 }
+/* 独立成行的图片：源码下方追加渲染结果（双显） */
+.cm-host :deep(.md-img-preview) {
+    padding: 4px 0 8px;
+}
 .cm-host :deep(.md-hr) {
     display: inline-block;
     width: 100%;
@@ -687,4 +791,55 @@ onBeforeUnmount(() => {
     vertical-align: middle;
 }
 .cm-host :deep(.md-bullet) { opacity: 0.85; }
+/* 表格预览：源码下方追加渲染结果（双显） */
+.cm-host :deep(.md-table-preview) {
+    padding: 2px 0 6px;
+    overflow-x: auto;
+}
+.cm-host :deep(.md-table) {
+    border-collapse: collapse;
+    font-size: 0.95em;
+    color: inherit;
+}
+.cm-host :deep(.md-table th),
+.cm-host :deep(.md-table td) {
+    border: 1px solid rgba(127, 127, 127, 0.35);
+    padding: 4px 10px;
+    line-height: 1.45;
+}
+.cm-host :deep(.md-table th) {
+    background-color: rgba(127, 127, 127, 0.12);
+    font-weight: 600;
+}
+.cm-host :deep(.md-table-preview code) {
+    background-color: rgba(127, 127, 127, 0.18);
+    border-radius: 3px;
+    padding: 0 3px;
+}
+/* 公式预览 */
+.cm-host :deep(.md-math-preview) {
+    padding: 4px 0 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+/* 任务列表复选框：点击直接改写文档 */
+.cm-host :deep(.md-task-checkbox) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    margin-right: 4px;
+    border: 1px solid rgba(127, 127, 127, 0.6);
+    border-radius: 3px;
+    font-size: 11px;
+    line-height: 1;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    color: var(--el-color-primary, #3b82f6);
+}
+.cm-host :deep(.md-task-checkbox:hover) {
+    background-color: rgba(127, 127, 127, 0.15);
+}
 </style>

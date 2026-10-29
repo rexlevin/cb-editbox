@@ -5,7 +5,7 @@
  *   - openDialog() / saveDialog(defaultPath)
  *   - readFile(path) / readFileBackup(backupId)
  *   - writeFile(payload) / writeFileForceUtf8(payload)
- *   - revealFile(path)
+ *   - revealFile(path) / openExternal(url)
  *   - recentGet() / recentAdd(path) / recentRemove(path)
  *   - saveBackup({path, content})
  *   - sessionGet() / sessionUpdate(payload)
@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('editbox', {
     writeFile: (payload) => ipcRenderer.invoke('editbox.writeFile', payload),
     writeFileForceUtf8: (payload) => ipcRenderer.invoke('editbox.writeFileForceUtf8', payload),
     revealFile: (filePath) => ipcRenderer.invoke('editbox.revealFile', filePath),
+    openExternal: (url) => ipcRenderer.invoke('editbox.openExternal', url),
+    toggleMarkdownPreview: () => ipcRenderer.invoke('editbox.toggleMarkdownPreview'),
 
     recentGet: () => ipcRenderer.invoke('editbox.recentGet'),
     recentAdd: (filePath) => ipcRenderer.invoke('editbox.recentAdd', filePath),

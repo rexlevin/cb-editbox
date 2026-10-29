@@ -87,7 +87,8 @@
         "fileDeletedBody": "\"{name}\" has been deleted from disk. Keep the buffer to continue editing and save it elsewhere, or close the tab to discard the content.",
         "lossyEncoding": "The current content cannot be fully represented in {encoding}; the original encoding was kept",
         "recoveredTitle": "Unsaved Content Recovered",
-        "recoveredBody": "Last session did not shut down properly. Unsaved content has been restored from backup and marked as unsaved."
+        "recoveredBody": "Last session did not shut down properly. Unsaved content has been restored from backup and marked as unsaved.",
+        "markdownTooLarge": "Document exceeds 5000 lines or 3MB; Markdown live preview was disabled automatically"
     },
     "settings": {
         "title": "Settings",
@@ -105,6 +106,8 @@
         "themeSystem": "Follow System",
         "zoomLevel": "Zoom Level",
         "tabSize": "Tab Width",
+        "markdownPreview": "Markdown Live Preview",
+        "markdownPreviewDesc": "Overlay rendered styles; tables and formulas show a preview below the source",
         "tabFont": "Tab Font",
         "tabFontSize": "Tab Font Size",
         "statusFont": "Status Bar Font",

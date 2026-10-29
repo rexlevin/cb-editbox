@@ -207,6 +207,7 @@ const shortcuts = computed(() => [
     { key: 'zoomOut', keys: ['Ctrl', '-'], label: 'act.zoomOut' },
     { key: 'zoomReset', keys: ['Ctrl', '0'], label: 'act.zoomReset' },
     { key: 'wordWrap', keys: ['Alt', 'Z'], label: 'act.toggleWordWrap' },
+    { key: 'markdownPreview', keys: ['Ctrl', 'Shift', 'M'], label: 'act.markdownPreview' },
     { key: 'toggleComment', keys: ['Ctrl', '/'], label: 'act.toggleComment' },
     { key: 'toggleBlockComment', keys: ['Alt', 'A'], label: 'act.toggleBlockComment' },
     { key: 'moveLineUp', keys: ['Alt', '↑'], label: 'act.moveLineUp' },

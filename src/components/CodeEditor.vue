@@ -15,6 +15,7 @@ import { languages } from '@codemirror/language-data';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { showMinimap } from '@replit/codemirror-minimap';
 import { useEditorStore } from '@/stores/editor';
+import { markdownLivePreview } from './markdownLivePreview';
 
 const props = defineProps({
     tab: { type: Object, required: true }
@@ -32,10 +33,12 @@ const themeComp = new Compartment();
 const indentComp = new Compartment();
 const whitespaceComp = new Compartment();
 const minimapComp = new Compartment();
+const markdownComp = new Compartment();
 
 let tabSize = 4;
 let showWhitespace = false;
 let showEol = false;
+let markdownPreview = true;
 
 // 缩略图：默认关闭，由视图菜单/设置开启；超过行数阈值的大文档自动不渲染
 const minimapOn = ref(false);
@@ -61,6 +64,7 @@ function loadLanguage(view2, filename) {
     desc.load().then((support) => {
         if (view2 && !view2.destroyed) {
             view2.dispatch({ effects: languageComp.reconfigure(support) });
+            applyMarkdownPreview();
         }
     }).catch(() => {
         if (view2 && !view2.destroyed) {
@@ -81,8 +85,16 @@ function setLanguage(name) {
     desc.load().then((support) => {
         if (view && !view.destroyed) {
             view.dispatch({ effects: languageComp.reconfigure(support) });
+            applyMarkdownPreview();
         }
     });
+}
+
+// Markdown 实时渲染：仅对语言为 Markdown 的标签页生效，由视图菜单/快捷键切换
+function applyMarkdownPreview() {
+    if (!view || view.destroyed) return;
+    const on = markdownPreview && props.tab.language === 'Markdown';
+    view.dispatch({ effects: markdownComp.reconfigure(on ? markdownLivePreview() : []) });
 }
 
 // 面板按钮已图标化、开关已符号化，此处补上悬浮提示
@@ -201,6 +213,7 @@ onMounted(async () => {
         tabSize = [2, 4, 8].includes(Number(s.tabSize)) ? Number(s.tabSize) : 4;
         showWhitespace = s.showWhitespace === true;
         showEol = s.showEol === true;
+        markdownPreview = s.markdownLivePreview !== false;
         minimapOn.value = s.showMinimap === true;
         dark = s.theme === 'dark'
             || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -220,6 +233,7 @@ onMounted(async () => {
             wrapComp.of(wordWrap ? EditorView.lineWrapping : []),
             lineNumComp.of(lineNumbers ? [] : EditorView.theme({ '.cm-gutters:not(.cm-minimap-gutter)': { display: 'none !important' } })),
             minimapComp.of(minimapExtensions()),
+            markdownComp.of([]),
             themeComp.of(dark ? oneDark : []),
             EditorView.updateListener.of((update) => {
                 if (!update.docChanged && !update.selectionSet && !update.geometryChanged) return;
@@ -282,6 +296,9 @@ watch(() => props.tab.name, (name) => {
     if (view && !view.destroyed) loadLanguage(view, name);
 });
 
+// 语言变化（自动识别或菜单手动切换）→ 重配 Markdown 实时渲染
+watch(() => props.tab.language, () => applyMarkdownPreview());
+
 // 暴露给菜单栏/设置窗口的命令
 function focusEditor() {
     if (view && !view.destroyed) view.focus();
@@ -325,6 +342,12 @@ function setShowMinimap(on) {
     if (view && !view.destroyed) {
         view.dispatch({ effects: minimapComp.reconfigure(minimapExtensions()) });
     }
+}
+function setMarkdownPreview(on) {
+    const next = Boolean(on);
+    if (next === markdownPreview) return;
+    markdownPreview = next;
+    applyMarkdownPreview();
 }
 
 // 缩进转换：有选区时作用于选区覆盖的整行，否则作用于整篇文档
@@ -412,7 +435,8 @@ function pasteCmd() {
 
 defineExpose({
     focusEditor, setLanguage, setWordWrap, setLineNumbers, setTabSize,
-    setShowWhitespace, setShowEol, setShowMinimap, setEditorFont, setAppTheme,
+    setShowWhitespace, setShowEol, setShowMinimap, setMarkdownPreview,
+    setEditorFont, setAppTheme,
     spacesToTabs, tabsToSpaces,
     undoCmd, redoCmd, selectAllCmd, openFind, openReplace, cutCmd, copyCmd, pasteCmd
 });
@@ -626,4 +650,41 @@ onBeforeUnmount(() => {
 .cm-host :deep(.cm-panel.cm-search input[name='replace']) { order: 8; }
 .cm-host :deep(.cm-panel.cm-search button[name='replace']) { order: 9; }
 .cm-host :deep(.cm-panel.cm-search button[name='replaceAll']) { order: 10; }
+
+/* ---------------- Markdown 实时渲染（B-lite） ---------------- */
+.cm-host :deep(.cm-line.md-h1) { font-size: 1.9em; font-weight: 700; line-height: 1.3; }
+.cm-host :deep(.cm-line.md-h2) { font-size: 1.6em; font-weight: 700; line-height: 1.3; }
+.cm-host :deep(.cm-line.md-h3) { font-size: 1.35em; font-weight: 600; line-height: 1.35; }
+.cm-host :deep(.cm-line.md-h4) { font-size: 1.18em; font-weight: 600; }
+.cm-host :deep(.cm-line.md-h5) { font-size: 1.08em; font-weight: 600; }
+.cm-host :deep(.cm-line.md-h6) { font-size: 1em; font-weight: 600; opacity: 0.85; }
+.cm-host :deep(.md-strong) { font-weight: 700; }
+.cm-host :deep(.md-em) { font-style: italic; }
+.cm-host :deep(.md-strike) { text-decoration: line-through; opacity: 0.7; }
+.cm-host :deep(.md-code) {
+    background-color: rgba(127, 127, 127, 0.18);
+    border-radius: 3px;
+}
+.cm-host :deep(.md-link) { color: #3b82f6; }
+.cm-host :deep(.cm-line.md-quote) {
+    border-left: 3px solid rgba(127, 127, 127, 0.45);
+    padding-left: 10px;
+    color: var(--el-text-color-regular, inherit);
+}
+.cm-host :deep(.cm-line.md-codeblock) { background-color: rgba(127, 127, 127, 0.1); }
+.cm-host :deep(.md-img) {
+    max-width: 100%;
+    max-height: 320px;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+.cm-host :deep(.md-hr) {
+    display: inline-block;
+    width: 100%;
+    height: 0;
+    border-top: 1px solid rgba(127, 127, 127, 0.45);
+    margin: 4px 0;
+    vertical-align: middle;
+}
+.cm-host :deep(.md-bullet) { opacity: 0.85; }
 </style>

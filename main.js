@@ -518,6 +518,7 @@ const MENU_I18N = {
         wordWrap: '自动换行(&W)', lineNumbers: '显示行号(&L)',
         showWhitespace: '显示空白符(&P)', showEol: '显示换行符(&E)',
         showMinimap: '显示缩略图(&M)',
+        markdownPreview: 'Markdown 实时渲染(&M)',
         settings: '设置...(&S)', about: '关于 EditBox(&A)'
     },
     'en-US': {
@@ -534,6 +535,7 @@ const MENU_I18N = {
         wordWrap: 'Word Wrap(&W)', lineNumbers: 'Show Line Numbers(&L)',
         showWhitespace: 'Show Whitespace(&P)', showEol: 'Show Line Endings(&E)',
         showMinimap: 'Show Minimap(&M)',
+        markdownPreview: 'Markdown Live Preview(&M)',
         settings: 'Settings...(&S)', about: 'About EditBox(&A)'
     }
 };
@@ -595,6 +597,7 @@ function buildMenu() {
     const showWhitespace = settings.get('showWhitespace') === true;
     const showEol = settings.get('showEol') === true;
     const showMinimap = settings.get('showMinimap') === true;
+    const markdownPreview = settings.get('markdownLivePreview') !== false; // 默认开
     const M = MENU_I18N[resolveLocale()];
 
     const template = [
@@ -680,6 +683,15 @@ function buildMenu() {
                     click: (item) => {
                         getStore('settings').set('showMinimap', item.checked);
                         sendAction('view.showMinimap', item.checked)();
+                    }
+                },
+                { type: 'separator' },
+                {
+                    label: M.markdownPreview, type: 'checkbox', checked: markdownPreview,
+                    accelerator: 'CmdOrCtrl+Shift+M',
+                    click: (item) => {
+                        getStore('settings').set('markdownLivePreview', item.checked);
+                        sendAction('view.markdownPreview', item.checked)();
                     }
                 }
             ]

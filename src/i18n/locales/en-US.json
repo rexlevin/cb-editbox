@@ -14,6 +14,7 @@
         "zoomOut": "Zoom Out",
         "zoomReset": "Reset Zoom to 100%",
         "toggleWordWrap": "Toggle Word Wrap",
+        "markdownPreview": "Toggle Markdown Live Preview",
         "toggleComment": "Toggle Line Comment",
         "toggleBlockComment": "Toggle Block Comment",
         "moveLineUp": "Move Line Up",

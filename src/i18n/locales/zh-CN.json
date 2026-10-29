@@ -14,6 +14,7 @@
         "zoomOut": "缩小界面",
         "zoomReset": "重置缩放为 100%",
         "toggleWordWrap": "切换自动换行",
+        "markdownPreview": "切换 Markdown 实时渲染",
         "toggleComment": "切换行注释",
         "toggleBlockComment": "切换块注释",
         "moveLineUp": "当前行上移",

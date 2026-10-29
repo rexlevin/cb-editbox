@@ -32,6 +32,12 @@
         </main>
 
         <StatusBar />
+
+        <LanguagePicker
+            :current="activeLanguage"
+            @select="onPickLanguage"
+            @close="focusActiveEditor"
+        />
     </div>
 </template>
 
@@ -43,6 +49,7 @@ import { useEditorStore } from '@/stores/editor';
 import CodeEditor from '@/components/CodeEditor.vue';
 import TabBar from '@/components/TabBar.vue';
 import StatusBar from '@/components/StatusBar.vue';
+import LanguagePicker from '@/components/LanguagePicker.vue';
 
 const { t, locale } = useI18n();
 const store = useEditorStore();
@@ -62,6 +69,12 @@ const activeEditorApi = computed(() => {
 function focusActiveEditor() {
     const api = activeEditorApi.value;
     if (api) nextTick(() => api.focusEditor());
+}
+
+// 语言快速选择：当前标签页语言 + 选中后立即生效
+const activeLanguage = computed(() => store.activeTab?.language ?? null);
+function onPickLanguage(name) {
+    activeEditorApi.value?.setLanguage(name);
 }
 
 async function openDialog() {

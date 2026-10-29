@@ -15,6 +15,7 @@
         "zoomReset": "重置缩放为 100%",
         "toggleWordWrap": "切换自动换行",
         "markdownPreview": "切换 Markdown 实时渲染",
+        "languagePicker": "选择语言模式",
         "toggleComment": "切换行注释",
         "toggleBlockComment": "切换块注释",
         "moveLineUp": "当前行上移",
@@ -45,6 +46,11 @@
         "mixed": "混合",
         "unsaved": "未保存",
         "plainText": "纯文本"
+    },
+    "picker": {
+        "placeholder": "输入语言名称或扩展名",
+        "current": "当前",
+        "noResult": "无匹配语言"
     },
     "empty": {
         "hint": "将文件拖拽到此处，或按 Ctrl+O 打开",

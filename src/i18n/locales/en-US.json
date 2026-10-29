@@ -15,6 +15,7 @@
         "zoomReset": "Reset Zoom to 100%",
         "toggleWordWrap": "Toggle Word Wrap",
         "markdownPreview": "Toggle Markdown Live Preview",
+        "languagePicker": "Select Language Mode",
         "toggleComment": "Toggle Line Comment",
         "toggleBlockComment": "Toggle Block Comment",
         "moveLineUp": "Move Line Up",
@@ -45,6 +46,11 @@
         "mixed": "Mixed",
         "unsaved": "Unsaved",
         "plainText": "Plain Text"
+    },
+    "picker": {
+        "placeholder": "Type a language name or extension",
+        "current": "current",
+        "noResult": "No matching languages"
     },
     "empty": {
         "hint": "Drag files here, or press Ctrl+O to open",

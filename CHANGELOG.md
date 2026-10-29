@@ -4,6 +4,34 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.0.7] - 2026-10-29
+
+### feat | 新功能 / Features
+
+新增 Markdown 实时渲染：标题、粗体、斜体、删除线、行内代码、链接、引用、代码块、分隔线、列表等语法实时呈现，光标所在行保留源码
+新增 GFM 表格与 KaTeX 公式的块级预览，源码下方同步展示渲染结果（双显）
+新增任务列表复选框渲染，点击可直接改写文档中的 `- [ ]` / `- [x]`
+新增图片渲染：支持绝对路径、相对路径与网络图片，独立成行的图片采用「源码 + 下方预览」双显
+新增链接 Ctrl+Click 调用系统浏览器打开
+新增「Markdown 实时渲染」菜单项、设置开关与 Ctrl+Shift+M 快捷键
+新增语言快速选择面板，支持 Ctrl+K, M 和弦唤起、搜索过滤与上下键选择
+大文档保护：超过 5000 行或 3MB 时自动关闭实时渲染并提示一次
+
+Add Markdown live preview for headings, bold/italic, strikethrough, inline code, links, quotes, code blocks, horizontal rules and lists, keeping the source of the cursor line
+Add block-level previews for GFM tables and KaTeX math, rendered beneath the source
+Render task lists as checkboxes; clicking toggles `- [ ]` / `- [x]` in the document
+Add image rendering for absolute, relative and remote sources; standalone images use a source + preview double display
+Open links in the system browser with Ctrl+Click
+Add a "Markdown Live Preview" menu item, settings toggle and Ctrl+Shift+M shortcut
+Add a quick language picker with Ctrl+K, M chord, search and arrow-key selection
+Disable live preview automatically for documents over 5000 lines or 3MB, with a one-time notice
+
+### build | 构建 / Build
+
+升级 KaTeX、@codemirror/lang-markdown、@codemirror/search、@codemirror/autocomplete 依赖，版本号更新至 0.0.7
+
+Upgrade KaTeX, @codemirror/lang-markdown, @codemirror/search and @codemirror/autocomplete; bump version to 0.0.7
+
 ## [0.0.6] - 2026-10-29
 
 ### feat | 新功能 / Features

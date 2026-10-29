@@ -4,6 +4,22 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.0.6] - 2026-10-29
+
+### feat | 新功能 / Features
+
+新增编辑器缩略图（minimap），默认关闭，可通过「视图 > 显示缩略图」开关启用
+缩略图随语言加载自动对齐代码着色，宽度收窄为 60px，并在打开时自动避让查找面板
+
+Add an editor minimap (off by default, toggled via View > Show Minimap)
+Minimap picks up syntax colors once the language loads, uses a 60px width and avoids overlapping the search panel
+
+### fix | 问题修复 / Bug Fixes
+
+文件监听在系统句柄耗尽（EMFILE）时自动降级为轮询，避免会话恢复因监听失败而中断
+
+Fall back to polling when the file watcher hits the handle limit (EMFILE), so session restore no longer breaks
+
 ## [0.0.5] - 2026-10-23
 
 ### feat | 新功能 / Features

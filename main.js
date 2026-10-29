@@ -208,11 +208,17 @@ ipcMain.handle('editbox.watchRegister', (_e, filePath, mtimeMs, size) => {
             mainWindow.webContents.send(channel, payload);
         }
     };
-    watcher.watchFile(filePath, { mtimeMs, size }, (changedPath, stat) => {
-        send('editbox.fileExternalChanged', { path: changedPath, stat });
-    }, (deletedPath) => {
-        send('editbox.fileDeleted', { path: deletedPath });
-    });
+    try {
+        watcher.watchFile(filePath, { mtimeMs, size }, (changedPath, stat) => {
+            send('editbox.fileExternalChanged', { path: changedPath, stat });
+        }, (deletedPath) => {
+            send('editbox.fileDeleted', { path: deletedPath });
+        });
+    } catch (error) {
+        // 监视不可用（如 inotify 名额耗尽）不应中断渲染进程的打开/恢复流程
+        console.warn('watchRegister failed:', filePath, error && error.message);
+        return { ok: false };
+    }
     return { ok: true };
 });
 
@@ -511,6 +517,7 @@ const MENU_I18N = {
         zoomIn: '放大(&I)', zoomOut: '缩小(&O)', zoomReset: '重置缩放(&R)',
         wordWrap: '自动换行(&W)', lineNumbers: '显示行号(&L)',
         showWhitespace: '显示空白符(&P)', showEol: '显示换行符(&E)',
+        showMinimap: '显示缩略图(&M)',
         settings: '设置...(&S)', about: '关于 EditBox(&A)'
     },
     'en-US': {
@@ -526,6 +533,7 @@ const MENU_I18N = {
         zoomIn: 'Zoom In(&I)', zoomOut: 'Zoom Out(&O)', zoomReset: 'Reset Zoom(&R)',
         wordWrap: 'Word Wrap(&W)', lineNumbers: 'Show Line Numbers(&L)',
         showWhitespace: 'Show Whitespace(&P)', showEol: 'Show Line Endings(&E)',
+        showMinimap: 'Show Minimap(&M)',
         settings: 'Settings...(&S)', about: 'About EditBox(&A)'
     }
 };
@@ -586,6 +594,7 @@ function buildMenu() {
     const lineNumbers = settings.get('lineNumbers') !== false; // 默认开
     const showWhitespace = settings.get('showWhitespace') === true;
     const showEol = settings.get('showEol') === true;
+    const showMinimap = settings.get('showMinimap') === true;
     const M = MENU_I18N[resolveLocale()];
 
     const template = [
@@ -664,6 +673,13 @@ function buildMenu() {
                     click: (item) => {
                         getStore('settings').set('showEol', item.checked);
                         sendAction('view.showEol', item.checked)();
+                    }
+                },
+                {
+                    label: M.showMinimap, type: 'checkbox', checked: showMinimap,
+                    click: (item) => {
+                        getStore('settings').set('showMinimap', item.checked);
+                        sendAction('view.showMinimap', item.checked)();
                     }
                 }
             ]

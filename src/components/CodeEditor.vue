@@ -1,5 +1,5 @@
 <template>
-    <div ref="hostEl" class="cm-host" :style="fontStyle"></div>
+    <div ref="hostEl" class="cm-host" :class="{ 'has-minimap': minimapOn }" :style="fontStyle"></div>
 </template>
 
 <script setup>
@@ -10,9 +10,10 @@ import { EditorState, Compartment } from '@codemirror/state';
 import { indentWithTab, undo, redo, selectAll } from '@codemirror/commands';
 import { basicSetup } from 'codemirror';
 import { openSearchPanel, search, searchPanelOpen } from '@codemirror/search';
-import { LanguageDescription, indentUnit } from '@codemirror/language';
+import { LanguageDescription, indentUnit, language } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { showMinimap } from '@replit/codemirror-minimap';
 import { useEditorStore } from '@/stores/editor';
 
 const props = defineProps({
@@ -30,10 +31,15 @@ const lineNumComp = new Compartment();
 const themeComp = new Compartment();
 const indentComp = new Compartment();
 const whitespaceComp = new Compartment();
+const minimapComp = new Compartment();
 
 let tabSize = 4;
 let showWhitespace = false;
 let showEol = false;
+
+// 缩略图：默认关闭，由视图菜单/设置开启；超过行数阈值的大文档自动不渲染
+const minimapOn = ref(false);
+const MINIMAP_MAX_LINES = 5000;
 
 const cursorSave = { line: 1, col: 1, scrollTop: 0 };
 
@@ -171,6 +177,18 @@ function whitespaceExtensions(showWs, eolVisible) {
     });
 }
 
+// ---------------------------------------------------------------------------
+// 缩略图（minimap）：随文档行数动态启停，超大文档直接不渲染以保证编辑流畅
+// 语言依赖：语言异步加载完成（facet 变化）时重新着色，否则缩略图会一直保持打开时的无高亮状态
+// ---------------------------------------------------------------------------
+function minimapExtensions() {
+    if (!minimapOn.value) return [];
+    return showMinimap.compute(['doc', language], (state) => {
+        if (state.doc.lines > MINIMAP_MAX_LINES) return null;
+        return { create: () => ({ dom: document.createElement('div') }) };
+    });
+}
+
 onMounted(async () => {
     // 读取视图/字体/主题/缩进设置
     let wordWrap = true, lineNumbers = true, dark = false;
@@ -183,6 +201,7 @@ onMounted(async () => {
         tabSize = [2, 4, 8].includes(Number(s.tabSize)) ? Number(s.tabSize) : 4;
         showWhitespace = s.showWhitespace === true;
         showEol = s.showEol === true;
+        minimapOn.value = s.showMinimap === true;
         dark = s.theme === 'dark'
             || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     } catch (e) { /* 用默认值 */ }
@@ -199,7 +218,8 @@ onMounted(async () => {
             indentComp.of(indentExtensions(tabSize)),
             whitespaceComp.of(whitespaceExtensions(showWhitespace, showEol)),
             wrapComp.of(wordWrap ? EditorView.lineWrapping : []),
-            lineNumComp.of(lineNumbers ? [] : EditorView.theme({ '.cm-gutters': { display: 'none !important' } })),
+            lineNumComp.of(lineNumbers ? [] : EditorView.theme({ '.cm-gutters:not(.cm-minimap-gutter)': { display: 'none !important' } })),
+            minimapComp.of(minimapExtensions()),
             themeComp.of(dark ? oneDark : []),
             EditorView.updateListener.of((update) => {
                 if (!update.docChanged && !update.selectionSet && !update.geometryChanged) return;
@@ -272,7 +292,7 @@ function setWordWrap(on) {
 }
 function setLineNumbers(on) {
     if (!view || view.destroyed) return;
-    view.dispatch({ effects: lineNumComp.reconfigure(on ? [] : EditorView.theme({ '.cm-gutters': { display: 'none !important' } })) });
+    view.dispatch({ effects: lineNumComp.reconfigure(on ? [] : EditorView.theme({ '.cm-gutters:not(.cm-minimap-gutter)': { display: 'none !important' } })) });
 }
 function setTabSize(size) {
     const next = [2, 4, 8].includes(Number(size)) ? Number(size) : 4;
@@ -297,6 +317,14 @@ function setShowEol(on) {
 function applyWhitespace() {
     if (!view || view.destroyed) return;
     view.dispatch({ effects: whitespaceComp.reconfigure(whitespaceExtensions(showWhitespace, showEol)) });
+}
+function setShowMinimap(on) {
+    const next = Boolean(on);
+    if (next === minimapOn.value) return;
+    minimapOn.value = next;
+    if (view && !view.destroyed) {
+        view.dispatch({ effects: minimapComp.reconfigure(minimapExtensions()) });
+    }
 }
 
 // 缩进转换：有选区时作用于选区覆盖的整行，否则作用于整篇文档
@@ -384,7 +412,7 @@ function pasteCmd() {
 
 defineExpose({
     focusEditor, setLanguage, setWordWrap, setLineNumbers, setTabSize,
-    setShowWhitespace, setShowEol, setEditorFont, setAppTheme,
+    setShowWhitespace, setShowEol, setShowMinimap, setEditorFont, setAppTheme,
     spacesToTabs, tabsToSpaces,
     undoCmd, redoCmd, selectAllCmd, openFind, openReplace, cutCmd, copyCmd, pasteCmd
 });
@@ -453,6 +481,11 @@ onBeforeUnmount(() => {
     border: none;
     border-radius: 6px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+/* 开启缩略图时，查找面板向左让出缩略图宽度（60px），避免遮住缩略图 */
+.cm-host.has-minimap :deep(.cm-panels-top:has(.cm-panel.cm-search)) {
+    right: 74px;
+    max-width: calc(100% - 84px);
 }
 /* 查找/替换面板：参照 VSCode —— 两行排布，从替换输入框起换行，按钮全部图标化 */
 .cm-host :deep(.cm-panel.cm-search) {

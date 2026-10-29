@@ -168,6 +168,10 @@ async function onMenuAction(action, payload) {
         case 'view.showEol':
             activeEditorApi.value?.setShowEol(payload);
             break;
+        case 'view.showMinimap':
+            // 缩略图是全局设置：菜单切换后同步到所有已打开的编辑器
+            Object.values(editorRefs.value).forEach(e => e.setShowMinimap(payload));
+            break;
         case 'language.set':
             activeEditorApi.value?.setLanguage(payload);
             break;
@@ -192,6 +196,7 @@ function onSettingApplied(key, value) {
     else if (key === 'tabSize') editors.forEach(e => e.setTabSize(value));
     else if (key === 'showWhitespace') editors.forEach(e => e.setShowWhitespace(value));
     else if (key === 'showEol') editors.forEach(e => e.setShowEol(value));
+    else if (key === 'showMinimap') editors.forEach(e => e.setShowMinimap(value));
     else if (key === 'editorFontFamily') editors.forEach(e => e.setEditorFont(value, null));
     else if (key === 'editorFontSize') editors.forEach(e => e.setEditorFont(null, value));
     else if (key === 'tabFontFamily') document.documentElement.style.setProperty('--tab-font-family', value);

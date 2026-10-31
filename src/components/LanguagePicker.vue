@@ -30,10 +30,10 @@
 
 <script setup>
 /**
- * 语言模式快速选择面板（快捷键 Ctrl+K, Ctrl+M）
+ * 语言模式快速选择面板（快捷键 Ctrl+K, M）
  *
  * 行为对齐 VSCode 的「更改语言模式」：
- * - Ctrl+K 先进入和弦等待（1.5s 内），再按 Ctrl+M 打开面板；
+ * - Ctrl+K 先进入和弦等待（1.5s 内），再按 M（不按 Ctrl）打开面板；
  * - 面板内输入关键字过滤（匹配名称 / 别名 / 扩展名），↑↓ 移动，Enter 确认，Esc 取消。
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -132,7 +132,7 @@ function onInputKeydown(e) {
 }
 
 // ---------------------------------------------------------------------------
-// Ctrl+K, Ctrl+M 和弦（Electron 菜单 accelerator 不支持序列键，故在渲染进程监听）
+// Ctrl+K, M 和弦（Electron 菜单 accelerator 不支持序列键，故在渲染进程监听）
 // ---------------------------------------------------------------------------
 let chordArmed = false;
 let chordTimer = null;
@@ -164,7 +164,7 @@ function onWindowKeydown(e) {
         e.stopPropagation();
         return;
     }
-    if (e.code === 'KeyM' && !e.altKey && !e.shiftKey) {
+    if (e.code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
         e.preventDefault();
         e.stopPropagation();
         disarm();

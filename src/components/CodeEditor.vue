@@ -122,7 +122,11 @@ function loadLanguageSupport(desc) {
 }
 
 function loadLanguage(view2, filename) {
-    const desc = LanguageDescription.matchFilename(languages, filename || '');
+    // 未命名临时文档没有扩展名可识别，优先使用用户选择/会话恢复的语言
+    const stored = props.tab.untitled ? props.tab.language : null;
+    const desc = stored
+        ? languages.find(l => l.name === stored)
+        : LanguageDescription.matchFilename(languages, filename || '');
     store.setTabLanguage(props.tab.id, desc ? desc.name : null);
     if (!desc) {
         view2.dispatch({ effects: languageComp.reconfigure([]) });

@@ -4,7 +4,7 @@
  * tab 数据结构：
  *   { id, path, name, untitled, content, encoding, hasBom,
  *     eol, mixed, mtimeMs, size, dirty, backupId, docRev,
- *     cursorLine, cursorCol, scrollTop }
+ *     language, cursorLine, cursorCol, scrollTop }
  *   - content 始终为 \n 归一文本；eol ∈ 'crlf'|'lf'|'cr'
  *   - docRev 递增触发 CodeEditor 外部内容替换（重载/恢复）
  *
@@ -57,6 +57,7 @@ export const useEditorStore = defineStore('editor', {
                             size: null,
                             dirty: true,
                             backupId: saved.backupId,
+                            language: saved.language || null,
                             cursorLine: saved.cursorLine || 1,
                             cursorCol: saved.cursorCol || 1,
                             scrollTop: saved.scrollTop || 0
@@ -80,6 +81,7 @@ export const useEditorStore = defineStore('editor', {
                             size: ret.size,
                             dirty: false,
                             backupId: null,
+                            language: saved.language || null,
                             cursorLine: saved.cursorLine || 1,
                             cursorCol: saved.cursorCol || 1,
                             scrollTop: saved.scrollTop || 0
@@ -582,7 +584,11 @@ export const useEditorStore = defineStore('editor', {
         // ---------- 文档语言（由 CodeEditor 上报实际生效的语言） ----------
         setTabLanguage(tabId, language) {
             const tab = this.tabs.find(t => t.id === tabId);
-            if (tab) tab.language = language || null;
+            if (!tab) return;
+            const next = language || null;
+            if (tab.language === next) return;
+            tab.language = next;
+            this.persistSession();
         },
 
         // ---------- 会话持久化（轻量，每次状态变化全量写） ----------
@@ -599,6 +605,7 @@ export const useEditorStore = defineStore('editor', {
                     mixed: t2.mixed,
                     dirty: t2.dirty,
                     backupId: t2.backupId,
+                    language: t2.language,
                     cursorLine: t2.cursorLine,
                     cursorCol: t2.cursorCol,
                     scrollTop: t2.scrollTop

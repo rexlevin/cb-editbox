@@ -110,7 +110,10 @@ const minimapPlugin = ViewPlugin.fromClass(
             this.inner.appendChild(this.canvas);
             this.inner.appendChild(this.overlay);
             this.dom.appendChild(this.inner);
-            view.scrollDOM.insertBefore(this.dom, view.contentDOM.nextSibling);
+            // 大纲开启时排在它右侧，保证顺序为：正文 → 大纲 → 缩略图
+            const outline = view.scrollDOM.querySelector('.cm-em-outline');
+            view.scrollDOM.insertBefore(this.dom, outline ? outline.nextSibling : view.contentDOM.nextSibling);
+            view.dom.style.setProperty('--cm-minimap-width', this.width + 'px');
             this.dom.addEventListener('mousedown', this.onMouseDown);
             window.addEventListener('mousemove', this.onMouseMove);
             window.addEventListener('mouseup', this.onMouseUp);
@@ -127,6 +130,9 @@ const minimapPlugin = ViewPlugin.fromClass(
             }
             window.removeEventListener('mousemove', this.onMouseMove);
             window.removeEventListener('mouseup', this.onMouseUp);
+            if (this.view && !this.view.destroyed) {
+                this.view.dom.style.setProperty('--cm-minimap-width', '0px');
+            }
             this.dom = null;
             this.inner = null;
             this.canvas = null;
@@ -201,6 +207,7 @@ const minimapPlugin = ViewPlugin.fromClass(
             if (width !== this.width) {
                 this.width = width;
                 this.dom.style.width = width + 'px';
+                view.dom.style.setProperty('--cm-minimap-width', width + 'px');
                 view.requestMeasure();
             }
 

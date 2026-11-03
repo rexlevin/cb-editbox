@@ -47,6 +47,9 @@
         "unsaved": "未保存",
         "plainText": "纯文本"
     },
+    "outline": {
+        "title": "大纲"
+    },
     "picker": {
         "placeholder": "输入语言名称或扩展名",
         "current": "当前",

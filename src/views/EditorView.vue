@@ -185,6 +185,10 @@ async function onMenuAction(action, payload) {
             // 缩略图是全局设置：菜单切换后同步到所有已打开的编辑器
             Object.values(editorRefs.value).forEach(e => e.setShowMinimap(payload));
             break;
+        case 'view.showOutline':
+            // 大纲是全局设置：菜单切换后同步到所有已打开的编辑器
+            Object.values(editorRefs.value).forEach(e => e.setShowOutline(payload));
+            break;
         case 'view.markdownPreview':
             // Markdown 实时渲染是全局设置：同步到所有已打开的编辑器
             Object.values(editorRefs.value).forEach(e => e.setMarkdownPreview(payload));
@@ -214,6 +218,7 @@ function onSettingApplied(key, value) {
     else if (key === 'showWhitespace') editors.forEach(e => e.setShowWhitespace(value));
     else if (key === 'showEol') editors.forEach(e => e.setShowEol(value));
     else if (key === 'showMinimap') editors.forEach(e => e.setShowMinimap(value));
+    else if (key === 'showOutline') editors.forEach(e => e.setShowOutline(value));
     else if (key === 'markdownLivePreview') editors.forEach(e => e.setMarkdownPreview(value));
     else if (key === 'editorFontFamily') editors.forEach(e => e.setEditorFont(value, null));
     else if (key === 'editorFontSize') editors.forEach(e => e.setEditorFont(null, value));

@@ -1,5 +1,5 @@
 <template>
-    <div ref="hostEl" class="cm-host" :class="{ 'has-minimap': minimapOn }" :style="fontStyle"></div>
+    <div ref="hostEl" class="cm-host" :style="fontStyle"></div>
 </template>
 
 <script setup>
@@ -33,6 +33,7 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { useEditorStore } from '@/stores/editor';
 import { markdownLivePreview } from './markdownLivePreview';
 import { minimap } from './minimap';
+import { outline } from './outline';
 
 // basicSetup 的自定义等价版本：去掉 lintKeymap
 // （其 Mod-Shift-m 会打开空诊断面板 "No diagnostics"，与 Markdown 实时渲染快捷键冲突；
@@ -82,6 +83,7 @@ const indentComp = new Compartment();
 const whitespaceComp = new Compartment();
 const minimapComp = new Compartment();
 const markdownComp = new Compartment();
+const outlineComp = new Compartment();
 
 let tabSize = 4;
 let showWhitespace = false;
@@ -92,6 +94,7 @@ let markdownPreview = true;
 const MARKDOWN_MAX_LINES = 5000;
 const MARKDOWN_MAX_BYTES = 3 * 1024 * 1024;
 let previewInstalled = false;
+let outlineInstalled = false;
 let previewTooLargeWarned = false;
 let docTooLarge = false;
 
@@ -101,6 +104,8 @@ function docIsTooLarge(doc) {
 
 // 缩略图：默认关闭，由视图菜单/设置开启；超过行数阈值的大文档由扩展内部自动不渲染
 const minimapOn = ref(false);
+// 大纲：仅在 Markdown 文档显示，默认开启，位置在缩略图左侧
+const outlineOn = ref(true);
 
 const cursorSave = { line: 1, col: 1, scrollTop: 0 };
 
@@ -136,6 +141,7 @@ function loadLanguage(view2, filename) {
         if (view2 && !view2.destroyed) {
             view2.dispatch({ effects: languageComp.reconfigure(support) });
             applyMarkdownPreview();
+            applyOutline();
         }
     }).catch(() => {
         if (view2 && !view2.destroyed) {
@@ -157,6 +163,7 @@ function setLanguage(name) {
         if (view && !view.destroyed) {
             view.dispatch({ effects: languageComp.reconfigure(support) });
             applyMarkdownPreview();
+            applyOutline();
         }
     });
 }
@@ -283,6 +290,22 @@ function minimapExtensions() {
     return minimap();
 }
 
+// ---------------------------------------------------------------------------
+// Markdown 大纲（outline）：装在右侧、缩略图左侧的标题导航面板，
+// 仅在语言为 Markdown 且开关开启时装载
+// ---------------------------------------------------------------------------
+function outlineExtensions() {
+    return outline({ title: t('outline.title') });
+}
+
+function applyOutline() {
+    if (!view || view.destroyed) return;
+    const on = outlineOn.value && props.tab.language === 'Markdown';
+    if (on === outlineInstalled) return;
+    outlineInstalled = on;
+    view.dispatch({ effects: outlineComp.reconfigure(on ? outlineExtensions() : []) });
+}
+
 onMounted(async () => {
     // 读取视图/字体/主题/缩进设置
     let wordWrap = true, lineNumbers = true, dark = false;
@@ -297,9 +320,12 @@ onMounted(async () => {
         showEol = s.showEol === true;
         markdownPreview = s.markdownLivePreview !== false;
         minimapOn.value = s.showMinimap === true;
+        outlineOn.value = s.showOutline !== false;
         dark = s.theme === 'dark'
             || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     } catch (e) { /* 用默认值 */ }
+
+    outlineInstalled = outlineOn.value && props.tab.language === 'Markdown';
 
     const state = EditorState.create({
         doc: props.tab.content,
@@ -330,6 +356,7 @@ onMounted(async () => {
             lineNumComp.of(lineNumbers ? [] : EditorView.theme({ '.cm-gutters': { display: 'none !important' } })),
             minimapComp.of(minimapExtensions()),
             markdownComp.of([]),
+            outlineComp.of(outlineInstalled ? outlineExtensions() : []),
             themeComp.of(dark ? oneDark : []),
             EditorView.updateListener.of((update) => {
                 if (!update.docChanged && !update.selectionSet && !update.geometryChanged) return;
@@ -396,8 +423,11 @@ watch(() => props.tab.name, (name) => {
     if (view && !view.destroyed) loadLanguage(view, name);
 });
 
-// 语言变化（自动识别或菜单手动切换）→ 重配 Markdown 实时渲染
-watch(() => props.tab.language, () => applyMarkdownPreview());
+// 语言变化（自动识别或菜单手动切换）→ 重配 Markdown 实时渲染与大纲
+watch(() => props.tab.language, () => {
+    applyMarkdownPreview();
+    applyOutline();
+});
 
 // 暴露给菜单栏/设置窗口的命令
 function focusEditor() {
@@ -448,6 +478,12 @@ function setMarkdownPreview(on) {
     if (next === markdownPreview) return;
     markdownPreview = next;
     applyMarkdownPreview();
+}
+function setShowOutline(on) {
+    const next = Boolean(on);
+    if (next === outlineOn.value) return;
+    outlineOn.value = next;
+    applyOutline();
 }
 
 // 缩进转换：有选区时作用于选区覆盖的整行，否则作用于整篇文档
@@ -535,7 +571,7 @@ function pasteCmd() {
 
 defineExpose({
     focusEditor, setLanguage, setWordWrap, setLineNumbers, setTabSize,
-    setShowWhitespace, setShowEol, setShowMinimap, setMarkdownPreview,
+    setShowWhitespace, setShowEol, setShowMinimap, setShowOutline, setMarkdownPreview,
     setEditorFont, setAppTheme,
     spacesToTabs, tabsToSpaces,
     undoCmd, redoCmd, selectAllCmd, openFind, openReplace, cutCmd, copyCmd, pasteCmd
@@ -598,18 +634,13 @@ onBeforeUnmount(() => {
 .cm-host :deep(.cm-panels-top:has(.cm-panel.cm-search)) {
     position: absolute;
     top: 8px;
-    right: 14px;
+    right: calc(14px + var(--cm-minimap-width, 0px) + var(--cm-outline-width, 0px));
     left: auto;
     width: 336px;
-    max-width: calc(100% - 24px);
+    max-width: calc(100% - 24px - var(--cm-minimap-width, 0px) - var(--cm-outline-width, 0px));
     border: none;
     border-radius: 6px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
-}
-/* 开启缩略图时，查找面板向左让出缩略图宽度（69px），避免遮住缩略图 */
-.cm-host.has-minimap :deep(.cm-panels-top:has(.cm-panel.cm-search)) {
-    right: 83px;
-    max-width: calc(100% - 93px);
 }
 /* 查找/替换面板：参照 VSCode —— 两行排布，从替换输入框起换行，按钮全部图标化 */
 .cm-host :deep(.cm-panel.cm-search) {

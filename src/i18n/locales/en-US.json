@@ -47,6 +47,9 @@
         "unsaved": "Unsaved",
         "plainText": "Plain Text"
     },
+    "outline": {
+        "title": "Outline"
+    },
     "picker": {
         "placeholder": "Type a language name or extension",
         "current": "current",

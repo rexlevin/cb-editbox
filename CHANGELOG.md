@@ -4,6 +4,38 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.0.8] - 2026-11-03
+
+### feat | 新功能 / Features
+
+新增 Markdown 大纲面板：位于编辑区右侧、缩略图左侧，自动提取 ATX 与 Setext 标题并按层级缩进
+点击大纲标题跳转到对应行，光标移动时高亮当前章节；标题过多时面板内部滚动
+新增「视图 > 显示大纲」开关（仅 Markdown 生效，无标题时自动隐藏），查找面板同步避让大纲与缩略图
+未命名临时文档支持按内容识别语言，并随会话保存与恢复语言设置
+
+Add a Markdown outline panel on the right side of the editor, left of the minimap, listing ATX and Setext headings with level indentation
+Click an outline entry to jump to its line and highlight the active section as the cursor moves; long outlines scroll within the panel
+Add a View > Show Outline toggle (Markdown only, hidden when there are no headings), and offset the search panel for the outline and minimap
+Detect the language of untitled scratch documents from their content and persist/restore it across sessions
+
+### fix | 问题修复 / Bug Fixes
+
+修正语言快速选择快捷键的按键组合与触发条件，简化按键逻辑
+
+Fix the chord and trigger conditions of the quick language picker shortcut
+
+### refactor | 重构 / Refactoring
+
+以自定义缩略图实现替换 codemirror-minimap，支持自动换行感知的缩略图渲染
+
+Replace codemirror-minimap with a custom minimap implementation that is aware of word wrapping
+
+### build | 构建 / Build
+
+项目版本号更新至 0.0.8
+
+Bump project version to 0.0.8
+
 ## [0.0.7] - 2026-10-29
 
 ### feat | 新功能 / Features

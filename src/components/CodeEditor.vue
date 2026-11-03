@@ -19,7 +19,7 @@ import {
     openSearchPanel, search, searchPanelOpen, searchKeymap, highlightSelectionMatches
 } from '@codemirror/search';
 import {
-    LanguageDescription, indentUnit, language,
+    LanguageDescription, indentUnit,
     bracketMatching, foldGutter, foldKeymap, indentOnInput,
     syntaxHighlighting, defaultHighlightStyle
 } from '@codemirror/language';
@@ -30,9 +30,9 @@ import { languages } from '@codemirror/language-data';
 import { markdown as markdownLang, markdownLanguage } from '@codemirror/lang-markdown';
 import { ElMessage } from 'element-plus';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { showMinimap } from '@replit/codemirror-minimap';
 import { useEditorStore } from '@/stores/editor';
 import { markdownLivePreview } from './markdownLivePreview';
+import { minimap } from './minimap';
 
 // basicSetup 的自定义等价版本：去掉 lintKeymap
 // （其 Mod-Shift-m 会打开空诊断面板 "No diagnostics"，与 Markdown 实时渲染快捷键冲突；
@@ -99,9 +99,8 @@ function docIsTooLarge(doc) {
     return doc.lines > MARKDOWN_MAX_LINES || doc.length > MARKDOWN_MAX_BYTES;
 }
 
-// 缩略图：默认关闭，由视图菜单/设置开启；超过行数阈值的大文档自动不渲染
+// 缩略图：默认关闭，由视图菜单/设置开启；超过行数阈值的大文档由扩展内部自动不渲染
 const minimapOn = ref(false);
-const MINIMAP_MAX_LINES = 5000;
 
 const cursorSave = { line: 1, col: 1, scrollTop: 0 };
 
@@ -272,15 +271,12 @@ function whitespaceExtensions(showWs, eolVisible) {
 }
 
 // ---------------------------------------------------------------------------
-// 缩略图（minimap）：随文档行数动态启停，超大文档直接不渲染以保证编辑流畅
-// 语言依赖：语言异步加载完成（facet 变化）时重新着色，否则缩略图会一直保持打开时的无高亮状态
+// 缩略图（minimap）：按真实行块高度绘制，自动换行后仍与文档内容保持同步；
+// 超大文档（>5000 行）由扩展内部自动停止渲染，保证编辑流畅
 // ---------------------------------------------------------------------------
 function minimapExtensions() {
     if (!minimapOn.value) return [];
-    return showMinimap.compute(['doc', language], (state) => {
-        if (state.doc.lines > MINIMAP_MAX_LINES) return null;
-        return { create: () => ({ dom: document.createElement('div') }) };
-    });
+    return minimap();
 }
 
 onMounted(async () => {
@@ -327,7 +323,7 @@ onMounted(async () => {
             indentComp.of(indentExtensions(tabSize)),
             whitespaceComp.of(whitespaceExtensions(showWhitespace, showEol)),
             wrapComp.of(wordWrap ? EditorView.lineWrapping : []),
-            lineNumComp.of(lineNumbers ? [] : EditorView.theme({ '.cm-gutters:not(.cm-minimap-gutter)': { display: 'none !important' } })),
+            lineNumComp.of(lineNumbers ? [] : EditorView.theme({ '.cm-gutters': { display: 'none !important' } })),
             minimapComp.of(minimapExtensions()),
             markdownComp.of([]),
             themeComp.of(dark ? oneDark : []),
@@ -409,7 +405,7 @@ function setWordWrap(on) {
 }
 function setLineNumbers(on) {
     if (!view || view.destroyed) return;
-    view.dispatch({ effects: lineNumComp.reconfigure(on ? [] : EditorView.theme({ '.cm-gutters:not(.cm-minimap-gutter)': { display: 'none !important' } })) });
+    view.dispatch({ effects: lineNumComp.reconfigure(on ? [] : EditorView.theme({ '.cm-gutters': { display: 'none !important' } })) });
 }
 function setTabSize(size) {
     const next = [2, 4, 8].includes(Number(size)) ? Number(size) : 4;
@@ -606,10 +602,10 @@ onBeforeUnmount(() => {
     border-radius: 6px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
 }
-/* 开启缩略图时，查找面板向左让出缩略图宽度（60px），避免遮住缩略图 */
+/* 开启缩略图时，查找面板向左让出缩略图宽度（69px），避免遮住缩略图 */
 .cm-host.has-minimap :deep(.cm-panels-top:has(.cm-panel.cm-search)) {
-    right: 74px;
-    max-width: calc(100% - 84px);
+    right: 83px;
+    max-width: calc(100% - 93px);
 }
 /* 查找/替换面板：参照 VSCode —— 两行排布，从替换输入框起换行，按钮全部图标化 */
 .cm-host :deep(.cm-panel.cm-search) {
@@ -778,9 +774,9 @@ onBeforeUnmount(() => {
     border-radius: 4px;
     vertical-align: middle;
 }
-/* 独立成行的图片：源码下方追加渲染结果（双显） */
+/* 独立成行的图片：源码下方追加渲染结果（双显），与源码行之间留出间距 */
 .cm-host :deep(.md-img-preview) {
-    padding: 4px 0 8px;
+    padding: 9px 0 8px;
 }
 .cm-host :deep(.md-hr) {
     display: inline-block;
@@ -791,9 +787,9 @@ onBeforeUnmount(() => {
     vertical-align: middle;
 }
 .cm-host :deep(.md-bullet) { opacity: 0.85; }
-/* 表格预览：源码下方追加渲染结果（双显） */
+/* 表格预览：源码下方追加渲染结果（双显），与源码行之间留出间距 */
 .cm-host :deep(.md-table-preview) {
-    padding: 2px 0 6px;
+    padding: 9px 0 7px;
     overflow-x: auto;
 }
 .cm-host :deep(.md-table) {
@@ -816,9 +812,9 @@ onBeforeUnmount(() => {
     border-radius: 3px;
     padding: 0 3px;
 }
-/* 公式预览 */
+/* 公式预览：与源码行之间留出间距 */
 .cm-host :deep(.md-math-preview) {
-    padding: 4px 0 8px;
+    padding: 9px 0 9px;
     overflow-x: auto;
     overflow-y: hidden;
 }

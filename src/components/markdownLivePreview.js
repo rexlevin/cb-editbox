@@ -313,6 +313,15 @@ function extraSpaceEnd(doc, pos) {
     return pos < doc.length && doc.sliceString(pos, pos + 1) === ' ' ? pos + 1 : pos;
 }
 
+// 找到语法节点所属的代码块（围栏代码块或缩进代码块）；行内代码的标记返回 null
+function enclosingCodeBlock(node) {
+    let parent = node.parent;
+    while (parent && parent.name !== 'FencedCode' && parent.name !== 'CodeBlock') {
+        parent = parent.parent;
+    }
+    return parent;
+}
+
 // ---------------------------------------------------------------------------
 // 行内 / 行装饰（ViewPlugin）
 // ---------------------------------------------------------------------------
@@ -402,8 +411,14 @@ function buildDecorations(view, getFilePath) {
                     addLineRange(Math.max(node.from, from), Math.min(node.to - 1, to), LINE_CODEBLOCK);
                     return;
                 }
+                // 代码块围栏与语言标记：光标在块内任意一行时都保持显示，
+                // 便于在任何位置确认代码块语言；行内代码仍按所在行判断
                 if (name === 'CodeMark' || name === 'CodeInfo') {
-                    if (!isActive(node.from, node.to)) items.push(HIDE.range(node.from, node.to));
+                    const block = enclosingCodeBlock(node.node);
+                    const active = block
+                        ? isActive(block.from, block.to)
+                        : isActive(node.from, node.to);
+                    if (!active) items.push(HIDE.range(node.from, node.to));
                     return;
                 }
 

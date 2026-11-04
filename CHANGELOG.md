@@ -4,6 +4,40 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.0.9] - 2026-11-04
+
+### feat | 新功能 / Features
+
+Markdown 大纲面板支持折叠 / 展开：收起后保留右侧入口条，点击面板按钮或依次按 Ctrl+K、O 恢复
+移除「视图 > 显示大纲」菜单项，大纲改由面板入口与快捷键控制，面板宽度随窗口自适应
+语言快速选择面板新增 Ctrl+K、O 快捷键，用于切换当前 Markdown 文档的大纲
+
+Add collapse/expand support to the Markdown outline panel, keeping a narrow rail on the right when collapsed; restore it via the panel button or the Ctrl+K, O key sequence
+Remove the View > Show Outline menu item so the outline is controlled from the panel and shortcut, and make the panel width adapt to the editor
+Add the Ctrl+K, O shortcut to the quick language picker for toggling the outline of the current Markdown document
+
+### fix | 问题修复 / Bug Fixes
+
+修复缩略图背景不跟随浅色 / 深色主题切换的问题
+修正长文档下缩略图视窗滑块过小的问题，并设置最小高度便于拖动
+
+Fix the minimap background not following light/dark theme changes
+Fix the minimap viewport handle becoming too small in long documents, with a minimum height for easier dragging
+
+### docs | 文档 / Documentation
+
+更新中英文 README，补充 Markdown 实时渲染、大纲面板、缩略图、语言快速选择与新增快捷键的说明
+新增 Java 与 Markdown 界面截图
+
+Update the English and Chinese READMEs with Markdown live preview, the outline panel, the minimap, the quick language picker and the new shortcuts
+Add Java and Markdown screenshots
+
+### build | 构建 / Build
+
+项目版本号更新至 0.0.9
+
+Bump project version to 0.0.9
+
 ## [0.0.8] - 2026-11-03
 
 ### feat | 新功能 / Features

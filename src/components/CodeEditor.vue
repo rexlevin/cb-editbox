@@ -32,7 +32,7 @@ import { ElMessage } from 'element-plus';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { useEditorStore } from '@/stores/editor';
 import { markdownLivePreview } from './markdownLivePreview';
-import { minimap } from './minimap';
+import { minimap, refreshMinimap } from './minimap';
 import { outline } from './outline';
 
 // basicSetup 的自定义等价版本：去掉 lintKeymap
@@ -547,6 +547,8 @@ function setEditorFont(family, size) {
 function setAppTheme(dark) {
     if (!view || view.destroyed) return;
     view.dispatch({ effects: themeComp.reconfigure(dark ? oneDark : []) });
+    // 缩略图背景为绘制时解析的内联色，主题切换后需重绘才能跟着变
+    refreshMinimap(view);
 }
 function undoCmd() {
     if (view && !view.destroyed) { view.focus(); undo(view); }

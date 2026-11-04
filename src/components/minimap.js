@@ -40,6 +40,11 @@ function resolveBackground(el) {
     return '';
 }
 
+// 主题类名签名（忽略焦点态），用于判断明暗主题是否切换
+function themeSignature(el) {
+    return el.classList.value.replace(/\bcm-focused\b/g, '').replace(/\s+/g, ' ').trim();
+}
+
 const minimapTheme = EditorView.theme({
     '& .cm-em-minimap': {
         position: 'sticky',
@@ -83,12 +88,22 @@ const minimapPlugin = ViewPlugin.fromClass(
             this.width = 0;
             this.windowTop = 0;
             this.styleCache = new Map();
-            this.themeClasses = view.dom.classList.value;
+            this.themeClasses = themeSignature(view.dom);
             this.onMouseDown = (e) => this.handleMouseDown(e);
             this.onMouseMove = (e) => this.handleMouseMove(e);
             this.onMouseUp = () => this.handleMouseUp();
             this.observer = new ResizeObserver(() => this.schedule());
             this.observer.observe(view.scrollDOM);
+            // 明暗主题切换时 CodeMirror 会更新外层类名（伴随高亮样式类变化），
+            // 插件 update() 阶段类名尚未更新，故用 MutationObserver 在 DOM 更新后重绘
+            this.classObserver = new MutationObserver(() => {
+                const signature = themeSignature(view.dom);
+                if (signature === this.themeClasses) return;
+                this.themeClasses = signature;
+                this.styleCache.clear();
+                this.schedule();
+            });
+            this.classObserver.observe(view.dom, { attributes: true, attributeFilter: ['class'] });
             this.check();
         }
 
@@ -147,16 +162,11 @@ const minimapPlugin = ViewPlugin.fromClass(
             if (this.raf) cancelAnimationFrame(this.raf);
             this.raf = 0;
             this.observer.disconnect();
+            this.classObserver.disconnect();
             this.remove();
         }
 
         update(update) {
-            const classes = this.view.dom.classList.value;
-            if (classes !== this.themeClasses) {
-                this.themeClasses = classes;
-                this.styleCache.clear();
-                this.schedule();
-            }
             if (update.docChanged) {
                 this.check();
                 this.schedule();
@@ -213,11 +223,10 @@ const minimapPlugin = ViewPlugin.fromClass(
                 view.requestMeasure();
             }
 
-            // 与左侧行号槽一样用不透明底色，横向滚动时长行从缩略图下方滑过而不会透出文字
-            const editorBackground = resolveBackground(view.dom);
-            if (editorBackground) {
-                this.dom.style.backgroundColor = editorBackground;
-            }
+            // 与左侧行号槽一样用不透明底色，横向滚动时长行从缩略图下方滑过而不会透出文字。
+            // 必须无条件赋值：浅色主题下各层背景透明（解析结果为空）时要清掉内联色，
+            // 交回 CSS 的 var(--el-bg-color) 跟随主题，否则深色模式写入的内联色会残留
+            this.dom.style.backgroundColor = resolveBackground(view.dom);
 
             const contentStyle = getComputedStyle(view.contentDOM);
             this.fontFamily = contentStyle.fontFamily || 'monospace';
@@ -397,6 +406,17 @@ const minimapPlugin = ViewPlugin.fromClass(
         }
     }
 );
+
+/**
+ * 主题切换后强制缩略图重算样式缓存并重绘。
+ * 缩略图容器背景是 render() 写入的内联色，必须重绘才能跟随主题。
+ */
+export function refreshMinimap(view) {
+    const instance = view.plugin(minimapPlugin);
+    if (!instance) return;
+    instance.styleCache.clear();
+    instance.schedule();
+}
 
 const minimapMargins = EditorView.scrollMargins.of((view) => {
     const plugin = view.plugin(minimapPlugin);

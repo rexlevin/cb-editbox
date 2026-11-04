@@ -15,6 +15,7 @@
         "zoomReset": "重置缩放为 100%",
         "toggleWordWrap": "切换自动换行",
         "markdownPreview": "切换 Markdown 实时渲染",
+        "outline": "显示/隐藏大纲",
         "languagePicker": "选择语言模式",
         "toggleComment": "切换行注释",
         "toggleBlockComment": "切换块注释",
@@ -48,7 +49,10 @@
         "plainText": "纯文本"
     },
     "outline": {
-        "title": "大纲"
+        "title": "大纲",
+        "expand": "展开大纲（Ctrl+K, O）",
+        "collapse": "收起大纲（Ctrl+K, O）",
+        "empty": "暂无标题"
     },
     "picker": {
         "placeholder": "输入语言名称或扩展名",

@@ -19,6 +19,8 @@ const MINIMAP_WIDTH = 69; // 60px × 1.15
 const SCALE = 1 / 8;      // 缩略图为编辑区的 1/8 比例
 const DPR = 2;
 const MAX_LINES = 5000;
+// 视窗滑块的最小高度，保证短文档/小窗口下仍有足够的抓取面积
+const MIN_OVERLAY_HEIGHT = 20;
 // 单帧最多绘制的行数，避免异常高度信息导致死循环
 const MAX_BLOCKS = 4000;
 
@@ -328,13 +330,16 @@ const minimapPlugin = ViewPlugin.fromClass(
                 }
             }
 
-            // 覆盖层：可视区域占整篇文档的比例，映射到缩略图实际绘制的高度
+            // 覆盖层：可视区域在缩略图实际绘制区域中的占比。
+            // 缩略图按 1/8 比例绘制「当前窗口」（约 8 屏），因此长文档下可视区高度
+            // 应为 height × SCALE；若按整篇文档比例计算，1000+ 行文档的滑块会被压得很小。
+            // 文档不足一屏时 drawnHeight 即整篇文档的绘制高度，两种算法结果一致。
             const innerHeight = this.inner.clientHeight || height;
             const drawnHeight = Math.min(innerHeight, contentHeight * SCALE);
             const visibleHeight = Math.min(height, contentHeight);
             const overlayHeight = Math.min(
                 drawnHeight,
-                Math.max(3, (visibleHeight / contentHeight) * drawnHeight)
+                Math.max(MIN_OVERLAY_HEIGHT, visibleHeight * SCALE)
             );
             this.overlayHeight = overlayHeight;
             this.drawnHeight = drawnHeight;

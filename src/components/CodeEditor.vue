@@ -104,8 +104,8 @@ function docIsTooLarge(doc) {
 
 // 缩略图：默认关闭，由视图菜单/设置开启；超过行数阈值的大文档由扩展内部自动不渲染
 const minimapOn = ref(false);
-// 大纲：仅在 Markdown 文档显示，默认开启，位置在缩略图左侧
-const outlineOn = ref(true);
+// 大纲：仅在 Markdown 文档显示，默认展开；折叠后保留右侧入口条
+const outlineExpanded = ref(true);
 
 const cursorSave = { line: 1, col: 1, scrollTop: 0 };
 
@@ -291,16 +291,39 @@ function minimapExtensions() {
 }
 
 // ---------------------------------------------------------------------------
-// Markdown 大纲（outline）：装在右侧、缩略图左侧的标题导航面板，
-// 仅在语言为 Markdown 且开关开启时装载
+// Markdown 大纲（outline）：停靠在右侧、缩略图左侧的标题导航面板；
+// Markdown 文档始终装载（折叠时保留入口条），展开状态由设置持久化
 // ---------------------------------------------------------------------------
 function outlineExtensions() {
-    return outline({ title: t('outline.title') });
+    return outline({
+        title: t('outline.title'),
+        emptyText: t('outline.empty'),
+        expandLabel: t('outline.expand'),
+        collapseLabel: t('outline.collapse'),
+        expanded: outlineExpanded.value,
+        onToggle: toggleOutline
+    });
+}
+
+// 面板按钮切换：立即生效并持久化；其他编辑器经主进程 settingApplied 广播同步
+function toggleOutline(next = !outlineExpanded.value) {
+    const value = Boolean(next);
+    if (value === outlineExpanded.value) return;
+    outlineExpanded.value = value;
+    refreshOutline();
+    if (window.editbox && window.editbox.settingsSet) {
+        window.editbox.settingsSet('showOutline', value);
+    }
+}
+
+function refreshOutline() {
+    if (!view || view.destroyed || !outlineInstalled) return;
+    view.dispatch({ effects: outlineComp.reconfigure(outlineExtensions()) });
 }
 
 function applyOutline() {
     if (!view || view.destroyed) return;
-    const on = outlineOn.value && props.tab.language === 'Markdown';
+    const on = props.tab.language === 'Markdown';
     if (on === outlineInstalled) return;
     outlineInstalled = on;
     view.dispatch({ effects: outlineComp.reconfigure(on ? outlineExtensions() : []) });
@@ -320,12 +343,12 @@ onMounted(async () => {
         showEol = s.showEol === true;
         markdownPreview = s.markdownLivePreview !== false;
         minimapOn.value = s.showMinimap === true;
-        outlineOn.value = s.showOutline !== false;
+        outlineExpanded.value = s.showOutline !== false;
         dark = s.theme === 'dark'
             || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     } catch (e) { /* 用默认值 */ }
 
-    outlineInstalled = outlineOn.value && props.tab.language === 'Markdown';
+    outlineInstalled = props.tab.language === 'Markdown';
 
     const state = EditorState.create({
         doc: props.tab.content,
@@ -481,9 +504,9 @@ function setMarkdownPreview(on) {
 }
 function setShowOutline(on) {
     const next = Boolean(on);
-    if (next === outlineOn.value) return;
-    outlineOn.value = next;
-    applyOutline();
+    if (next === outlineExpanded.value) return;
+    outlineExpanded.value = next;
+    refreshOutline();
 }
 
 // 缩进转换：有选区时作用于选区覆盖的整行，否则作用于整篇文档

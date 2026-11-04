@@ -15,6 +15,7 @@
         "zoomReset": "Reset Zoom to 100%",
         "toggleWordWrap": "Toggle Word Wrap",
         "markdownPreview": "Toggle Markdown Live Preview",
+        "outline": "Toggle Outline",
         "languagePicker": "Select Language Mode",
         "toggleComment": "Toggle Line Comment",
         "toggleBlockComment": "Toggle Block Comment",
@@ -48,7 +49,10 @@
         "plainText": "Plain Text"
     },
     "outline": {
-        "title": "Outline"
+        "title": "Outline",
+        "expand": "Expand Outline (Ctrl+K, O)",
+        "collapse": "Collapse Outline (Ctrl+K, O)",
+        "empty": "No headings"
     },
     "picker": {
         "placeholder": "Type a language name or extension",

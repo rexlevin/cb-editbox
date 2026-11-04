@@ -30,10 +30,11 @@
 
 <script setup>
 /**
- * 语言模式快速选择面板（快捷键 Ctrl+K, M）
+ * 语言模式快速选择面板（快捷键 Ctrl+K, M / Ctrl+K, O）
  *
  * 行为对齐 VSCode 的「更改语言模式」：
  * - Ctrl+K 先进入和弦等待（1.5s 内），再按 M（不按 Ctrl）打开面板；
+ * - 同一和弦前缀下按 O 切换 Markdown 大纲（仅 Markdown 文档生效）；
  * - 面板内输入关键字过滤（匹配名称 / 别名 / 扩展名），↑↓ 移动，Enter 确认，Esc 取消。
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -132,7 +133,7 @@ function onInputKeydown(e) {
 }
 
 // ---------------------------------------------------------------------------
-// Ctrl+K, M 和弦（Electron 菜单 accelerator 不支持序列键，故在渲染进程监听）
+// Ctrl+K, M / Ctrl+K, O 和弦（Electron 菜单 accelerator 不支持序列键，故在渲染进程监听）
 // ---------------------------------------------------------------------------
 let chordArmed = false;
 let chordTimer = null;
@@ -143,6 +144,16 @@ function disarm() {
         clearTimeout(chordTimer);
         chordTimer = null;
     }
+}
+
+// Ctrl+K, O：切换 Markdown 大纲。设置项是全局的，写入后由主进程广播给所有编辑器
+async function toggleOutline() {
+    if (props.current !== 'Markdown') return;
+    try {
+        const s = await window.editbox.settingsGetAll();
+        // showOutline 默认开：当前为 false 时表示折叠，下一次应展开
+        window.editbox.settingsSet('showOutline', s.showOutline === false);
+    } catch (e) { /* 持久化失败不阻断切换 */ }
 }
 
 function onWindowKeydown(e) {
@@ -169,6 +180,13 @@ function onWindowKeydown(e) {
         e.stopPropagation();
         disarm();
         openPicker();
+        return;
+    }
+    if (e.code === 'KeyO' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        disarm();
+        toggleOutline();
         return;
     }
     // 其余按键视为无效和弦，原样放行

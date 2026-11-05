@@ -661,7 +661,7 @@ onBeforeUnmount(() => {
     top: 8px;
     right: calc(14px + var(--cm-minimap-width, 0px) + var(--cm-outline-width, 0px));
     left: auto;
-    width: 336px;
+    width: 368px;
     max-width: calc(100% - 24px - var(--cm-minimap-width, 0px) - var(--cm-outline-width, 0px));
     border: none;
     border-radius: 6px;
@@ -679,7 +679,7 @@ onBeforeUnmount(() => {
 .cm-host :deep(.cm-panel.cm-search input.cm-textfield) {
     width: 148px;
     min-width: 100px;
-    height: 22px;
+    height: 26px;
     margin: 0;
     padding: 0 5px;
     font-size: 100%;
@@ -701,8 +701,8 @@ onBeforeUnmount(() => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 26px;
+    height: 26px;
     margin: 0;
     font-size: 0;
     border: 1px solid transparent;
@@ -714,7 +714,7 @@ onBeforeUnmount(() => {
 }
 .cm-host :deep(.cm-panel.cm-search label)::before {
     font-family: Consolas, 'Courier New', monospace;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1;
 }
 .cm-host :deep(.cm-panel.cm-search label:has(input[name='case']))::before { content: 'Aa'; }
@@ -731,8 +731,8 @@ onBeforeUnmount(() => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 26px;
+    height: 26px;
     margin: 0;
     padding: 0;
     font-size: 0;
@@ -744,16 +744,16 @@ onBeforeUnmount(() => {
 }
 .cm-host :deep(.cm-panel.cm-search button.cm-button)::before {
     content: '';
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
     background-color: currentColor;
     -webkit-mask-repeat: no-repeat;
     -webkit-mask-position: center;
-    -webkit-mask-size: 14px 14px;
+    -webkit-mask-size: 18px 18px;
     -webkit-mask-image: var(--search-panel-icon);
     mask-repeat: no-repeat;
     mask-position: center;
-    mask-size: 14px 14px;
+    mask-size: 18px 18px;
     mask-image: var(--search-panel-icon);
 }
 .cm-host :deep(.cm-panel.cm-search button.cm-button:hover) {
@@ -781,11 +781,11 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     margin: 0;
     padding: 0;
-    font-size: 13px;
+    font-size: 15px;
     line-height: 1;
     background: transparent;
     border: none;

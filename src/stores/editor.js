@@ -429,10 +429,11 @@ export const useEditorStore = defineStore('editor', {
                 }
             }
             if (tab.path) await window.editbox.watchUnregister(tab.path);
+            const closedIdx = this.tabs.findIndex(t2 => t2.id === tabId);
             this.tabs = this.tabs.filter(t2 => t2.id !== tabId);
             if (this.activeId === tabId) {
-                const idx = this.tabs.findIndex(t2 => t2.id === tabId);
-                const fallback = this.tabs[Math.min(Math.max(idx, 0), this.tabs.length - 1)];
+                // 关闭后激活左侧标签页（无左侧则取原位置右侧）
+                const fallback = this.tabs[Math.min(Math.max(closedIdx - 1, 0), this.tabs.length - 1)];
                 this.activeId = fallback ? fallback.id : null;
             }
             this.persistSession();

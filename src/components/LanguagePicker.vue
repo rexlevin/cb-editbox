@@ -212,7 +212,7 @@ onBeforeUnmount(() => {
 }
 .lp-panel {
     margin-top: 10vh;
-    width: 460px;
+    width: 520px;
     max-width: calc(100vw - 40px);
     display: flex;
     flex-direction: column;
@@ -223,10 +223,10 @@ onBeforeUnmount(() => {
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
 }
 .lp-input {
-    height: 34px;
-    padding: 0 12px;
+    height: 40px;
+    padding: 0 14px;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 16px;
     color: var(--el-text-color-primary, inherit);
     background: transparent;
     border: none;
@@ -244,8 +244,8 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 5px 12px;
-    font-size: 13px;
+    padding: 6px 14px;
+    font-size: 15px;
     color: var(--el-text-color-primary, inherit);
     cursor: pointer;
 }
@@ -253,12 +253,12 @@ onBeforeUnmount(() => {
     background: var(--el-color-primary-light-9, rgba(64, 158, 255, 0.12));
 }
 .lp-current {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--el-text-color-secondary, #909399);
 }
 .lp-empty {
-    padding: 10px 12px;
-    font-size: 13px;
+    padding: 12px 14px;
+    font-size: 15px;
     color: var(--el-text-color-secondary, #909399);
 }
 </style>

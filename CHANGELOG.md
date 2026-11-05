@@ -4,6 +4,36 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.0.10] - 2026-11-05
+
+### fix | 问题修复 / Bug Fixes
+
+修复关闭标签页后总是跳回第一个标签页的问题，改为激活被关闭标签左侧的标签页（关闭首个标签时激活原位置上的标签）
+
+Fix closing a tab always jumping back to the first tab; the tab to the left of the closed one is now activated (the right one when the first tab is closed)
+
+### docs | 文档 / Documentation
+
+更新语法高亮相关的截图文件
+
+Update the syntax highlighting screenshots
+
+### style | 样式 / Styling
+
+调整语言选择器组件的尺寸与字体大小
+调整代码编辑器搜索面板的控件尺寸与图标大小
+调整大纲组件的字体大小与行高，优化显示效果
+
+Adjust the size and font of the language picker component
+Adjust control and icon sizes in the editor search panel
+Adjust the font size and line height of the outline panel for better readability
+
+### build | 构建 / Build
+
+项目版本号更新至 0.0.10
+
+Bump project version to 0.0.10
+
 ## [0.0.9] - 2026-11-04
 
 ### feat | 新功能 / Features

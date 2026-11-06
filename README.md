@@ -52,6 +52,8 @@ A standalone settings window for language, appearance, fonts, keyboard shortcuts
 
 - **Multi-tab editing** — open many files at once; switching tabs never loses your cursor position, scroll position or in-progress edits. Tabs support a right-click context menu (close / close others / close all), switching with `Ctrl + PageUp` / `Ctrl + PageDown` and reordering with `Ctrl + Shift + PageUp` / `Ctrl + Shift + PageDown`.
 - **File operations** — new, open, save, save-as and reload, plus drag-and-drop to open files and a recent-files list (last 10) in the File menu.
+- **Folder workspaces** — open a folder with `Ctrl + Shift + O` to get a primary sidebar with the explorer, plus a background file index (20,000-file cap with built-in ignore rules and a truncation notice); toggle the explorer from the activity bar or with `Ctrl + Shift + E`; recent workspaces are kept in the File menu, and each workspace keeps its own tab session, so opening a workspace hides the current tabs without closing them and closing the workspace restores them exactly as they were.
+- **Projects** — save the current folder as a named project from **File > Save Project...** and switch to it with `Shift + Alt + P`; the project picker supports open, delete and rename, and projects are independent of the recent-workspaces list.
 - **Syntax highlighting** — 30+ languages including JavaScript, TypeScript, Python, Go, Rust, Java, C/C++, C#, HTML, CSS, Vue, JSX/TSX, JSON, XML, Markdown, SQL, Shell, YAML, Dockerfile, TOML and properties files, with manual language override from a menu grouped by first letter.
 - **Quick language picker** — `Ctrl + K, M` opens a searchable language panel for the active tab; filter by name, alias or file extension and confirm with the arrow keys and Enter.
 - **Find and replace** — in-document search and replace, with a floating panel pinned to the top-right of the editor.
@@ -92,6 +94,10 @@ EditBox is a Canbox app and requires the [Canbox](https://canbox-io.github.io/ca
 | ------------------------------------------ | ----------------------------- |
 | `Ctrl + N`                                 | New file                      |
 | `Ctrl + O`                                 | Open file                     |
+| `Ctrl + Shift + O`                         | Open folder as workspace      |
+| `Ctrl + B`                                 | Toggle primary sidebar        |
+| `Ctrl + Shift + E`                         | Toggle explorer               |
+| `Shift + Alt + P`                          | Open a project                |
 | `Ctrl + S`                                 | Save                          |
 | `Ctrl + Shift + S`                         | Save as                       |
 | `Ctrl + W`                                 | Close tab                     |

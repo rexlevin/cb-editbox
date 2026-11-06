@@ -124,6 +124,13 @@
                                      @change="onUiFontSize" />
                     <span class="unit">px</span>
                 </div>
+
+                <div class="row">
+                    <label>{{ t('settings.explorerFontSize') }}</label>
+                    <el-input-number :model-value="explorerFontSizeNum" :min="10" :max="20" :step="1"
+                                     @change="onExplorerFontSize" />
+                    <span class="unit">px</span>
+                </div>
             </div>
 
             <!-- 快捷键 -->
@@ -190,6 +197,7 @@ const statusFontSize = ref(13);
 const editorFontFamily = ref('');
 const editorFontSize = ref(15);
 const uiFontSize = ref(13);
+const explorerFontSize = ref(13);
 const fontOptions = ref([]);
 // el-select-v2 需要 {value,label} 结构，并做虚拟滚动（系统字体可达数千项）
 const fontSelectOptions = computed(() => fontOptions.value.map((f) => ({ value: f, label: f })));
@@ -198,10 +206,18 @@ const tabFontSizeNum = computed(() => Number(tabFontSize.value) || 13);
 const statusFontSizeNum = computed(() => Number(statusFontSize.value) || 13);
 const editorFontSizeNum = computed(() => Number(editorFontSize.value) || 15);
 const uiFontSizeNum = computed(() => Number(uiFontSize.value) || 13);
+const explorerFontSizeNum = computed(() => Number(explorerFontSize.value) || 13);
 
 const shortcuts = computed(() => [
     { key: 'new', keys: ['Ctrl', 'N'], label: 'act.new' },
     { key: 'open', keys: ['Ctrl', 'O'], label: 'act.open' },
+    { key: 'openFolder', keys: ['Ctrl', 'Shift', 'O'], label: 'act.openFolder' },
+    { key: 'closeWorkspaceChord', keys: ['Ctrl+K', 'F'], label: 'act.closeWorkspace' },
+    { key: 'languagePicker', keys: ['Ctrl+K', 'M'], label: 'act.languagePicker' },
+    { key: 'commandPalette', keys: ['Ctrl+Shift+P'], label: 'act.commandPalette' },
+    { key: 'toggleSidebar', keys: ['Ctrl', 'B'], label: 'act.toggleSidebar' },
+    { key: 'showExplorer', keys: ['Ctrl', 'Shift', 'E'], label: 'act.showExplorer' },
+    { key: 'openProject', keys: ['Shift', 'Alt', 'P'], label: 'act.openProject' },
     { key: 'save', keys: ['Ctrl', 'S'], label: 'act.save' },
     { key: 'saveAs', keys: ['Ctrl', 'Shift', 'S'], label: 'act.saveAs' },
     { key: 'closeTab', keys: ['Ctrl', 'W'], label: 'ctx.closeTab' },
@@ -216,7 +232,6 @@ const shortcuts = computed(() => [
     { key: 'wordWrap', keys: ['Alt', 'Z'], label: 'act.toggleWordWrap' },
     { key: 'markdownPreview', keys: ['Ctrl', 'Shift', 'M'], label: 'act.markdownPreview' },
     { key: 'outline', keys: ['Ctrl+K', 'O'], label: 'act.outline' },
-    { key: 'languagePicker', keys: ['Ctrl+K', 'M'], label: 'act.languagePicker' },
     { key: 'toggleComment', keys: ['Ctrl', '/'], label: 'act.toggleComment' },
     { key: 'toggleBlockComment', keys: ['Alt', 'A'], label: 'act.toggleBlockComment' },
     { key: 'moveLineUp', keys: ['Alt', '↑'], label: 'act.moveLineUp' },
@@ -294,6 +309,11 @@ function onUiFontSize(v) {
     applyUiFontSize(v);
     persist('uiFontSize', v + 'px');
 }
+// 文件浏览器（主侧栏文件树）字号：主窗口实时应用
+function onExplorerFontSize(v) {
+    explorerFontSize.value = v;
+    persist('explorerFontSize', v + 'px');
+}
 
 function applyUiFontSize(sizePx) {
     const px = Number(sizePx) || 13;
@@ -341,6 +361,7 @@ onMounted(async () => {
         editorFontFamily.value = s.editorFontFamily || '';
         editorFontSize.value = parseInt(s.editorFontSize) || 15;
         uiFontSize.value = parseInt(s.uiFontSize) || 13;
+        explorerFontSize.value = parseInt(s.explorerFontSize) || 13;
         applyUiFontSize(uiFontSize.value);
         // 应用语言
         const mode = localeMode.value;

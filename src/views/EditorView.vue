@@ -17,19 +17,28 @@
             </el-button>
         </el-alert>
 
-        <TabBar />
-
-        <main class="editor-area">
-            <template v-for="tab in store.tabs" :key="tab.id">
-                <div v-show="tab.id === store.activeId" class="editor-pane">
-                    <CodeEditor :ref="(el) => setEditorRef(tab.id, el)" :tab="tab" />
-                </div>
-            </template>
-            <div v-if="store.tabs.length === 0" class="empty-hint">
-                <p>{{ $t('empty.hint') }}</p>
-                <p class="empty-sub">{{ $t('empty.sub') }}</p>
+        <div class="work-area">
+            <ActivityBar />
+            <div v-if="workspace.sidebarVisible" class="sidebar-panel"
+                 :style="{ width: workspace.sidebarWidth + 'px' }">
+                <FileTree @open="onTreeOpen" />
+                <div class="sidebar-resizer" @mousedown="startSidebarResize"></div>
             </div>
-        </main>
+            <div class="main-col">
+                <TabBar />
+                <main class="editor-area">
+                    <template v-for="tab in store.tabs" :key="tab.id">
+                        <div v-show="tab.id === store.activeId" class="editor-pane">
+                            <CodeEditor :ref="(el) => setEditorRef(tab.id, el)" :tab="tab" />
+                        </div>
+                    </template>
+                    <div v-if="store.tabs.length === 0" class="empty-hint">
+                        <p>{{ $t('empty.hint') }}</p>
+                        <p class="empty-sub">{{ $t('empty.sub') }}</p>
+                    </div>
+                </main>
+            </div>
+        </div>
 
         <StatusBar />
 
@@ -38,21 +47,32 @@
             @select="onPickLanguage"
             @close="focusActiveEditor"
         />
+
+        <ProjectPicker :visible="projectPickerVisible" :mode="projectPickerMode"
+                       @close="projectPickerVisible = false" @run="onPickerRun" />
     </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useEditorStore } from '@/stores/editor';
+import { useWorkspaceStore } from '@/stores/workspace';
 import CodeEditor from '@/components/CodeEditor.vue';
 import TabBar from '@/components/TabBar.vue';
 import StatusBar from '@/components/StatusBar.vue';
 import LanguagePicker from '@/components/LanguagePicker.vue';
+import FileTree from '@/components/FileTree.vue';
+import ActivityBar from '@/components/ActivityBar.vue';
+import ProjectPicker from '@/components/ProjectPicker.vue';
 
 const { t, locale } = useI18n();
 const store = useEditorStore();
+const workspace = useWorkspaceStore();
+const projectPickerVisible = ref(false);
+const projectPickerMode = ref('project');
+const appVersion = (typeof __APP_VERSION__ !== 'undefined') ? __APP_VERSION__ : '';
 const conflictTab = computed(() => store.tabs.find(tab => tab.externalConflict) || null);
 
 // 每个 tab 对应一个 CodeEditor 实例（v-show 保活），用 id 索引
@@ -82,6 +102,18 @@ async function openDialog() {
     await store.openPaths(paths);
     focusActiveEditor();
 }
+
+async function onTreeOpen(path) {
+    await store.openPaths([path]);
+    focusActiveEditor();
+}
+
+function updateTitle() {
+    const name = workspace.meta ? workspace.meta.name : '';
+    document.title = name ? `EditBox - ${name} - v${appVersion}` : `EditBox - v${appVersion}`;
+}
+
+watch(() => workspace.meta, updateTitle);
 
 async function onDrop(e) {
     const files = Array.from(e.dataTransfer.files || []);
@@ -192,6 +224,34 @@ async function onMenuAction(action, payload) {
         case 'language.set':
             activeEditorApi.value?.setLanguage(payload);
             break;
+        case 'workspace.openFolder':
+            await workspace.openDialog();
+            focusActiveEditor();
+            break;
+        case 'workspace.openRecent':
+            if (payload) await workspace.open(payload);
+            focusActiveEditor();
+            break;
+        case 'workspace.close':
+            await workspace.close();
+            focusActiveEditor();
+            break;
+        case 'workspace.refresh':
+            await workspace.refresh();
+            break;
+        case 'workspace.saveProject':
+            await workspace.saveCurrentAsProject();
+            break;
+        case 'workspace.openProject':
+            projectPickerMode.value = 'project';
+            projectPickerVisible.value = true;
+            break;
+        case 'view.sidebar':
+            await workspace.setSidebarVisible(payload);
+            break;
+        case 'view.explorer':
+            await workspace.setSidebarVisible(!workspace.sidebarVisible);
+            break;
         case 'options.settings':
             window.editbox.openSettings();
             break;
@@ -222,6 +282,7 @@ function onSettingApplied(key, value) {
     else if (key === 'tabFontSize') document.documentElement.style.setProperty('--tab-font-size', value);
     else if (key === 'statusFontFamily') document.documentElement.style.setProperty('--status-font-family', value);
     else if (key === 'statusFontSize') document.documentElement.style.setProperty('--status-font-size', value);
+    else if (key === 'explorerFontSize') workspace.explorerFontSize = parseInt(value) || 13;
     else if (key === 'localeMode') {
         locale.value = value === 'system'
             ? (navigator.language.startsWith('zh') ? 'zh-CN' : 'en-US')
@@ -255,6 +316,84 @@ watch(() => store.activeId, () => {
     focusActiveEditor();
 });
 
+// ---------------------------------------------------------------------------
+// 主侧栏宽度拖拽（180–600px，松开后持久化）
+// ---------------------------------------------------------------------------
+let sidebarResize = null;
+
+function onSidebarResizing(event) {
+    if (!sidebarResize) return;
+    const width = sidebarResize.startWidth + event.clientX - sidebarResize.startX;
+    workspace.sidebarWidth = Math.min(600, Math.max(180, width));
+}
+
+function stopSidebarResize() {
+    document.removeEventListener('mousemove', onSidebarResizing);
+    document.removeEventListener('mouseup', stopSidebarResize);
+    document.body.style.cursor = '';
+    if (sidebarResize) window.editbox.settingsSet('sidebarWidth', workspace.sidebarWidth);
+    sidebarResize = null;
+}
+
+function startSidebarResize(event) {
+    sidebarResize = { startX: event.clientX, startWidth: workspace.sidebarWidth };
+    document.addEventListener('mousemove', onSidebarResizing);
+    document.addEventListener('mouseup', stopSidebarResize);
+    document.body.style.cursor = 'col-resize';
+    event.preventDefault();
+}
+
+// ---------------------------------------------------------------------------
+// 快捷键：Ctrl+Shift+P 打开命令面板；Ctrl+K 和弦（第二个键不再按 Ctrl）
+// 注：Ctrl+P（快速打开文件 + > / : / @ 前缀模式）由 docs/cb-editbox-quick-open-design.md
+// 单独实现，此处不接管 Ctrl+P
+// ---------------------------------------------------------------------------
+let chordArmed = false;
+let chordTimer = null;
+
+function resetChord() {
+    chordArmed = false;
+    if (chordTimer) clearTimeout(chordTimer);
+    chordTimer = null;
+}
+
+function openPicker(mode) {
+    projectPickerMode.value = mode;
+    projectPickerVisible.value = true;
+}
+
+function onGlobalKeydown(event) {
+    const mod = event.ctrlKey || event.metaKey;
+    const key = event.key.toLowerCase();
+    // Ctrl+Shift+P：命令面板，等价于快速打开框输入 >
+    if (mod && event.shiftKey && !event.altKey && key === 'p') {
+        event.preventDefault();
+        resetChord();
+        openPicker('command');
+        return;
+    }
+    if (!chordArmed) {
+        if (mod && !event.altKey && !event.shiftKey && key === 'k' && !event.repeat) {
+            event.preventDefault();
+            chordArmed = true;
+            chordTimer = setTimeout(resetChord, 1500);
+        }
+        return;
+    }
+    resetChord();
+    if (event.altKey || event.shiftKey) return;
+    // Ctrl+K 之后按 F（不带修饰键）：关闭工作区；M / O 由 LanguagePicker 处理
+    if (key === 'f') {
+        event.preventDefault();
+        workspace.close();
+    }
+}
+
+async function onPickerRun(action, payload) {
+    projectPickerVisible.value = false;
+    await onMenuAction(action, payload);
+}
+
 onMounted(async () => {
     // 应用已保存的 UI 设置
     try {
@@ -265,21 +404,38 @@ onMounted(async () => {
         if (s.tabFontSize) root.setProperty('--tab-font-size', s.tabFontSize);
         if (s.statusFontFamily) root.setProperty('--status-font-family', s.statusFontFamily);
         if (s.statusFontSize) root.setProperty('--status-font-size', s.statusFontSize);
+        if (s.explorerFontSize) workspace.explorerFontSize = parseInt(s.explorerFontSize) || 13;
         const mode = s.localeMode || localStorage.getItem('editbox-locale-mode') || 'system';
         locale.value = mode === 'system'
             ? (navigator.language.startsWith('zh') ? 'zh-CN' : 'en-US')
             : mode;
     } catch (e) { /* ignore */ }
 
-    await store.restoreSession();
-    store.bindExternalChanged();
-    store.bindFileDeleted();
+    workspace.bindEvents();
+    // 先注册窗口关闭与菜单事件，再做会话恢复：恢复过程出错也不能让窗口无法关闭
     window.editbox.onRequestClose(() => {
         store.confirmClose({ fromRequestClose: true });
     });
     window.editbox.onMenuAction(onMenuAction);
     window.editbox.onSettingApplied(onSettingApplied);
+    window.addEventListener('keydown', onGlobalKeydown, true);
+    try {
+        await workspace.hydrate();
+        await store.restoreSession();
+        await workspace.restoreWorkspace();
+    } catch (error) {
+        console.error('[cb-editbox] 启动恢复失败:', error.message);
+    }
+    store.bindExternalChanged();
+    store.bindFileDeleted();
+    updateTitle();
     focusActiveEditor();
+});
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', onGlobalKeydown, true);
+    if (chordTimer) clearTimeout(chordTimer);
+    stopSidebarResize();
 });
 </script>
 
@@ -297,8 +453,44 @@ onMounted(async () => {
 .alert-btn {
     margin-left: 8px;
 }
+.work-area {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    overflow: hidden;
+}
+.sidebar-panel {
+    position: relative;
+    flex: none;
+    min-width: 180px;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.sidebar-resizer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 2;
+}
+.sidebar-resizer:hover {
+    background: var(--el-color-primary-light-7);
+}
+.main-col {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
 .editor-area {
     flex: 1;
+    min-width: 0;
     min-height: 0;
     position: relative;
     display: flex;

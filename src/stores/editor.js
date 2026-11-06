@@ -18,12 +18,15 @@ import { ElMessageBox, ElMessage } from 'element-plus';
 let _tabSeq = 0;
 let _backupTimer = null;
 const _backupPending = new Set(); // 待备份 tabId
+const MAX_WORKSPACE_CONTEXTS = 20; // 工作区上下文会话上限（默认上下文不参与淘汰）
 
 export const useEditorStore = defineStore('editor', {
     state: () => ({
         tabs: [],
         activeId: null,
-        zoomFactor: 1 // 界面缩放比例（唯一来源，状态栏据此显示）
+        zoomFactor: 1, // 界面缩放比例（唯一来源，状态栏据此显示）
+        contextKey: 'default', // 当前编辑上下文：'default' | `ws:<root>`
+        contexts: {} // 非活动上下文会话快照：key → ContextSession
     }),
 
     getters: {
@@ -36,10 +39,102 @@ export const useEditorStore = defineStore('editor', {
     },
 
     actions: {
-        // ---------- 会话恢复 ----------
+        // ---------- 会话恢复（仅恢复活动上下文） ----------
         async restoreSession() {
-            const session = await window.editbox.sessionGet();
-            const tabs = Array.isArray(session.tabs) ? session.tabs : [];
+            let session = null;
+            try {
+                session = await window.editbox.sessionGet();
+            } catch (error) {
+                session = null;
+            }
+            if (!session) return;
+            const contexts = session.contexts && typeof session.contexts === 'object' ? session.contexts : {};
+            const activeKey = typeof session.activeContext === 'string' && session.activeContext
+                ? session.activeContext
+                : 'default';
+            this.contextKey = activeKey;
+            this.contexts = {};
+            for (const key of Object.keys(contexts)) {
+                if (key === activeKey) continue;
+                const snapshot = contexts[key];
+                if (snapshot && Array.isArray(snapshot.tabs)) this.contexts[key] = snapshot;
+            }
+            const activeSnapshot = contexts[activeKey];
+            if (activeSnapshot) await this.loadSnapshot(activeSnapshot);
+            this.persistSession();
+        },
+
+        // ---------- 编辑上下文 ----------
+        contextRoot(key) {
+            const value = typeof key === 'string' ? key : this.contextKey;
+            return value.startsWith('ws:') ? value.slice(3) : null;
+        },
+
+        snapshotCurrent() {
+            return {
+                key: this.contextKey,
+                root: this.contextRoot(this.contextKey),
+                tabs: this.tabs.map(t => ({
+                    path: t.path,
+                    name: t.name,
+                    untitled: t.untitled,
+                    encoding: t.encoding,
+                    hasBom: t.hasBom,
+                    eol: t.eol,
+                    mixed: t.mixed,
+                    dirty: t.dirty,
+                    backupId: t.backupId,
+                    language: t.language,
+                    cursorLine: t.cursorLine,
+                    cursorCol: t.cursorCol,
+                    scrollTop: t.scrollTop
+                })),
+                activeIndex: this.tabs.findIndex(t => t.id === this.activeId),
+                updatedAt: Date.now()
+            };
+        },
+
+        async flushDirtyBackups() {
+            for (const tab of this.tabs) {
+                if (!tab.dirty) continue;
+                const ret = await window.editbox.saveBackup({ path: tab.path, content: tab.content });
+                if (ret && ret.ok) tab.backupId = ret.backupId;
+            }
+        },
+
+        pruneContexts() {
+            const keyed = Object.keys(this.contexts)
+                .filter(key => key.startsWith('ws:'))
+                .map(key => ({
+                    key,
+                    // 持久化恢复的上下文可能缺失 tabs 字段，做防御避免切换流程中断
+                    tabs: Array.isArray(this.contexts[key] && this.contexts[key].tabs)
+                        ? this.contexts[key].tabs
+                        : [],
+                    updatedAt: (this.contexts[key] && this.contexts[key].updatedAt) || 0
+                }));
+            const clean = keyed
+                .filter(item => !item.tabs.some(tab => tab.dirty))
+                .sort((a, b) => b.updatedAt - a.updatedAt);
+            const keep = new Set(clean.slice(0, MAX_WORKSPACE_CONTEXTS).map(item => item.key));
+            for (const item of keyed) {
+                if (item.tabs.some(tab => tab.dirty)) continue;
+                if (!keep.has(item.key)) delete this.contexts[item.key];
+            }
+        },
+
+        async unloadAllTabs() {
+            for (const tab of this.tabs) {
+                if (tab.path) await window.editbox.watchUnregister(tab.path);
+            }
+            this.tabs = [];
+            this.activeId = null;
+        },
+
+        async loadSnapshot(snapshot) {
+            const tabs = Array.isArray(snapshot && snapshot.tabs) ? snapshot.tabs : [];
+            this.tabs = [];
+            this.activeId = null;
             for (const saved of tabs) {
                 if (saved.backupId) {
                     const ret = await window.editbox.readFileBackup(saved.backupId);
@@ -65,35 +160,52 @@ export const useEditorStore = defineStore('editor', {
                         continue;
                     }
                 }
-                if (saved.path) {
-                    const ret = await window.editbox.readFile(saved.path);
-                    if (ret.ok) {
-                        this.pushTab({
-                            path: saved.path,
-                            name: saved.path.split(/[\\/]/).pop(),
-                            untitled: false,
-                            content: ret.content,
-                            encoding: ret.encoding,
-                            hasBom: ret.hasBom,
-                            eol: ret.eol.dominant,
-                            mixed: ret.eol.mixed,
-                            mtimeMs: ret.mtimeMs,
-                            size: ret.size,
-                            dirty: false,
-                            backupId: null,
-                            language: saved.language || null,
-                            cursorLine: saved.cursorLine || 1,
-                            cursorCol: saved.cursorCol || 1,
-                            scrollTop: saved.scrollTop || 0
-                        });
-                        await window.editbox.watchRegister(saved.path, ret.mtimeMs, ret.size);
-                    }
-                }
+                if (!saved.path) continue;
+                const ret = await window.editbox.readFile(saved.path);
+                if (!ret.ok) continue;
+                this.pushTab({
+                    path: saved.path,
+                    name: saved.path.split(/[\\/]/).pop(),
+                    untitled: false,
+                    content: ret.content,
+                    encoding: ret.encoding,
+                    hasBom: ret.hasBom,
+                    eol: ret.eol.dominant,
+                    mixed: ret.eol.mixed,
+                    mtimeMs: ret.mtimeMs,
+                    size: ret.size,
+                    dirty: false,
+                    backupId: null,
+                    language: saved.language || null,
+                    cursorLine: saved.cursorLine || 1,
+                    cursorCol: saved.cursorCol || 1,
+                    scrollTop: saved.scrollTop || 0
+                });
+                await window.editbox.watchRegister(saved.path, ret.mtimeMs, ret.size);
             }
-            if (tabs.length > 0) {
-                const idx = Math.min(session.activeIndex || 0, this.tabs.length - 1);
-                this.activeId = this.tabs[Math.max(idx, 0)] ? this.tabs[Math.max(idx, 0)].id : null;
+            if (this.tabs.length > 0) {
+                const index = Math.min(Math.max(Number(snapshot.activeIndex) || 0, 0), this.tabs.length - 1);
+                this.activeId = this.tabs[index].id;
             }
+        },
+
+        // 保存当前上下文快照并恢复目标上下文；返回切换前的脏标签数量
+        async switchContext(nextKey) {
+            const key = typeof nextKey === 'string' && nextKey ? nextKey : 'default';
+            if (key === this.contextKey) return { switched: false, dirtyCount: this.dirtyCount };
+            const dirtyCount = this.dirtyCount;
+            await this.flushDirtyBackups();
+            this.contexts[this.contextKey] = this.snapshotCurrent();
+            await this.unloadAllTabs();
+            this.contextKey = key;
+            const snapshot = this.contexts[key];
+            if (snapshot) {
+                delete this.contexts[key];
+                await this.loadSnapshot(snapshot);
+            }
+            this.pruneContexts();
+            this.persistSession();
+            return { switched: true, dirtyCount };
         },
 
         // ---------- 打开 / 新建 ----------
@@ -420,8 +532,8 @@ export const useEditorStore = defineStore('editor', {
                     }
                 ).catch((action) => (action === 'cancel' ? 'dontSave' : null));
                 // confirm=保存并关闭 / cancel=不保存 / close(右上角X)=取消
-                if (!answer && answer !== 'dontSave') return false;
-                if (answer === true) {
+                if (answer !== 'confirm' && answer !== 'dontSave') return false;
+                if (answer === 'confirm') {
                     const saved = await this.saveTab(tabId);
                     if (!saved.ok) return false; // 保存失败（含用户取消另存为）→ 不关闭
                 } else {
@@ -469,40 +581,55 @@ export const useEditorStore = defineStore('editor', {
             const t = i18n.global.t;
             // 仅对已保存到磁盘的脏文档提示；未命名脏文档静默保留备份，下次自动恢复
             const dirtyDiskTabs = this.tabs.filter(t2 => t2.dirty && t2.path);
-            if (dirtyDiskTabs.length > 0) {
-                const answer = await ElMessageBox.confirm(
-                    t('msg.closeWindowBody', { count: dirtyDiskTabs.length }), t('msg.closeWindowTitle'),
-                    {
-                        confirmButtonText: t('btn.saveAll'),
-                        cancelButtonText: t('btn.dontSave'),
-                        distinguishCancelAndClose: true,
-                        type: 'warning'
+            try {
+                if (dirtyDiskTabs.length > 0) {
+                    const answer = await ElMessageBox.confirm(
+                        t('msg.closeWindowBody', { count: dirtyDiskTabs.length }), t('msg.closeWindowTitle'),
+                        {
+                            confirmButtonText: t('btn.saveAll'),
+                            cancelButtonText: t('btn.dontSave'),
+                            distinguishCancelAndClose: true,
+                            type: 'warning'
+                        }
+                    ).catch((action) => (action === 'cancel' ? 'dontSave' : null));
+                    if (answer !== 'confirm' && answer !== 'dontSave') return false;
+                    if (answer === 'confirm') {
+                        for (const tab of dirtyDiskTabs) {
+                            const saved = await this.saveTab(tab.id);
+                            if (!saved.ok) return false;
+                        }
+                    } else {
+                        // 不保存：丢弃这些磁盘文件的备份
+                        for (const tab of dirtyDiskTabs) tab.backupId = null;
                     }
-                ).catch((action) => (action === 'cancel' ? 'dontSave' : null));
-                if (!answer && answer !== 'dontSave') return false;
-                if (answer === true) {
-                    for (const tab of dirtyDiskTabs) {
-                        const saved = await this.saveTab(tab.id);
-                        if (!saved.ok) return false;
-                    }
+                }
+                // 未命名脏文档保持 dirty + backupId，随会话持久化，下次恢复
+                try {
+                    this.persistSession();
+                } catch (persistError) {
+                    // 会话持久化失败不应阻塞窗口关闭
+                    console.error('[cb-editbox] 会话持久化失败:', persistError.message);
+                }
+                if (fromRequestClose) {
+                    await window.editbox.performClose();
                 } else {
-                    // 不保存：丢弃这些磁盘文件的备份
-                    for (const tab of dirtyDiskTabs) tab.backupId = null;
+                    for (const tab of [...this.tabs]) {
+                        if (tab.path) await window.editbox.watchUnregister(tab.path);
+                    }
+                    this.tabs = [];
+                    this.activeId = null;
+                    this.persistSession();
                 }
-            }
-            // 未命名脏文档保持 dirty + backupId，随会话持久化，下次恢复
-            this.persistSession();
-            if (fromRequestClose) {
-                await window.editbox.performClose();
-            } else {
-                for (const tab of [...this.tabs]) {
-                    if (tab.path) await window.editbox.watchUnregister(tab.path);
+                return true;
+            } catch (error) {
+                console.error('[cb-editbox] 关闭流程失败:', error.message);
+                if (fromRequestClose) {
+                    // 窗口关闭请求不能被吞掉，否则窗口无法关闭
+                    await window.editbox.performClose();
+                    return true;
                 }
-                this.tabs = [];
-                this.activeId = null;
-                this.persistSession();
+                return false;
             }
-            return true;
         },
 
         // ---------- 外部修改推送 ----------
@@ -594,25 +721,15 @@ export const useEditorStore = defineStore('editor', {
 
         // ---------- 会话持久化（轻量，每次状态变化全量写） ----------
         persistSession() {
-            const payload = {
-                activeIndex: this.tabs.findIndex(t2 => t2.id === this.activeId),
-                tabs: this.tabs.map(t2 => ({
-                    path: t2.path,
-                    name: t2.name,
-                    untitled: t2.untitled,
-                    encoding: t2.encoding,
-                    hasBom: t2.hasBom,
-                    eol: t2.eol,
-                    mixed: t2.mixed,
-                    dirty: t2.dirty,
-                    backupId: t2.backupId,
-                    language: t2.language,
-                    cursorLine: t2.cursorLine,
-                    cursorCol: t2.cursorCol,
-                    scrollTop: t2.scrollTop
-                }))
-            };
-            window.editbox.sessionUpdate(payload);
+            const contexts = { ...this.contexts };
+            contexts[this.contextKey] = this.snapshotCurrent();
+            // IPC 使用结构化克隆，Vue 响应式 Proxy 不能被克隆，先转成纯 JSON 数据再发送
+            const payload = JSON.parse(JSON.stringify({
+                activeContext: this.contextKey,
+                workspaceRoot: this.contextRoot(this.contextKey),
+                contexts
+            }));
+            window.editbox.sessionUpdate(payload).catch(() => { /* 持久化失败不阻塞编辑 */ });
         }
     }
 });

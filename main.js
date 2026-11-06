@@ -16,6 +16,8 @@ const { detectEncoding, decode, encodeWithLossyCheck, bomBuffer } = require('./l
 const { analyzeEol, convertEol, normalizeLf } = require('./lib/eol');
 const watcher = require('./lib/watcher');
 const { listFonts } = require('./lib/fonts');
+const { createWorkspaceManager } = require('./lib/workspace');
+const { createProjects } = require('./lib/projects');
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const EOL_KEYS = ['crlf', 'lf', 'cr'];
@@ -51,6 +53,25 @@ function getStore(name) {
 function backupDir() {
     return path.join(usersDataPath(), global.__CANBOX_ENV__.appId, 'backup');
 }
+
+// 向主窗口广播事件（统一入口；窗口未就绪或已销毁时静默丢弃）
+function sendToMain(channel, payload) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(channel, payload);
+    }
+}
+
+const projects = createProjects(() => getStore('projects'));
+
+const workspaceManager = createWorkspaceManager({
+    onChanged: () => {
+        rebuildMenu();
+        sendToMain('editbox.workspaceChanged', workspaceManager.getMeta());
+    },
+    onIndexUpdated: (snapshot) => {
+        sendToMain('editbox.workspaceIndexUpdated', snapshot);
+    }
+});
 
 // ---------------------------------------------------------------------------
 // 最近打开文件（canbox-core store，上限 10 条）
@@ -101,6 +122,63 @@ function clearRecentFiles() {
 }
 
 // ---------------------------------------------------------------------------
+// 最近工作区（canbox-core store workspace，上限 10）
+// ---------------------------------------------------------------------------
+const WORKSPACE_RECENT_LIMIT = 10;
+
+function normalizeWorkspaceRoot(root) {
+    return String(root).replace(/\\/g, '/');
+}
+
+// 读取时过滤已失效目录并去重；失效条目从存储中一并清理
+function readRecentWorkspaces() {
+    try {
+        const list = getStore('workspace').get('recent');
+        if (!Array.isArray(list)) return [];
+        const seen = new Set();
+        const valid = list.filter((root) => {
+            if (typeof root !== 'string' || seen.has(root)) return false;
+            try {
+                if (!fs.statSync(root).isDirectory()) return false;
+            } catch (error) {
+                return false;
+            }
+            seen.add(root);
+            return true;
+        }).slice(0, WORKSPACE_RECENT_LIMIT);
+        if (valid.length !== list.length) writeRecentWorkspaces(valid);
+        return valid;
+    } catch (error) {
+        return [];
+    }
+}
+
+function writeRecentWorkspaces(list) {
+    try {
+        getStore('workspace').set('recent', list.slice(0, WORKSPACE_RECENT_LIMIT));
+    } catch (error) { /* ignore */ }
+}
+
+function addRecentWorkspace(root) {
+    const normalized = normalizeWorkspaceRoot(root);
+    const list = readRecentWorkspaces().filter(item => item !== normalized);
+    list.unshift(normalized);
+    writeRecentWorkspaces(list);
+    rebuildMenu();
+}
+
+function removeRecentWorkspace(root) {
+    const normalized = normalizeWorkspaceRoot(root);
+    writeRecentWorkspaces(readRecentWorkspaces().filter(item => item !== normalized));
+    rebuildMenu();
+}
+
+function clearRecentWorkspaces() {
+    writeRecentWorkspaces([]);
+    rebuildMenu();
+}
+
+// ---------------------------------------------------------------------------
 // IPC: 文件
 // ---------------------------------------------------------------------------
 ipcMain.handle('editbox.openFileDialog', async () => {
@@ -132,6 +210,7 @@ ipcMain.handle('editbox.readFile', (_e, filePath) => {
         const { encoding, hasBom } = detectEncoding(buf);
         const rawText = decode(buf, encoding);
         const eolInfo = analyzeEol(rawText);
+        workspaceManager.upsert(filePath);
         return {
             ok: true,
             content: normalizeLf(rawText),
@@ -171,6 +250,7 @@ function doWriteFile(filePath, content, encoding, hasBom, eol) {
     fs.writeFileSync(filePath, finalBuf);
     const stat = fs.statSync(filePath);
     watcher.updateBaseline(filePath, { mtimeMs: stat.mtimeMs, size: stat.size });
+    workspaceManager.upsert(filePath);
     return { ok: true, mtimeMs: stat.mtimeMs, size: stat.size };
 }
 
@@ -285,19 +365,114 @@ ipcMain.handle('editbox.saveBackup', (_e, payload) => {
 // ---------------------------------------------------------------------------
 ipcMain.handle('editbox.sessionGet', () => {
     const sessionStore = getStore('session');
+    let contexts = sessionStore.get('contexts');
+    if (!contexts || typeof contexts !== 'object') {
+        // 旧版会话迁移：tabs / activeIndex → contexts.default
+        const legacyTabs = sessionStore.get('tabs');
+        const legacyActiveIndex = sessionStore.get('activeIndex') || 0;
+        contexts = {
+            default: {
+                key: 'default',
+                root: null,
+                tabs: Array.isArray(legacyTabs) ? legacyTabs : [],
+                activeIndex: Number(legacyActiveIndex) || 0,
+                updatedAt: Date.now()
+            }
+        };
+        sessionStore.set('contexts', contexts);
+        sessionStore.set('activeContext', 'default');
+        sessionStore.delete('tabs');
+        sessionStore.delete('activeIndex');
+    }
     return {
         cleanShutdown: sessionStore.get('cleanShutdown'),
-        activeIndex: sessionStore.get('activeIndex') || 0,
-        tabs: sessionStore.get('tabs') || []
+        activeContext: sessionStore.get('activeContext') || 'default',
+        workspaceRoot: sessionStore.get('workspaceRoot') || null,
+        contexts
     };
 });
 
 ipcMain.handle('editbox.sessionUpdate', (_e, payload) => {
     const sessionStore = getStore('session');
-    const tabs = Array.isArray(payload.tabs) ? payload.tabs : [];
-    sessionStore.set('tabs', tabs);
-    sessionStore.set('activeIndex', Number(payload.activeIndex) || 0);
+    const data = payload && typeof payload === 'object' ? payload : {};
+    const contexts = data.contexts && typeof data.contexts === 'object' ? data.contexts : {};
+    sessionStore.set('contexts', contexts);
+    sessionStore.set('activeContext',
+        typeof data.activeContext === 'string' && data.activeContext ? data.activeContext : 'default');
+    sessionStore.set('workspaceRoot',
+        typeof data.workspaceRoot === 'string' && data.workspaceRoot ? data.workspaceRoot : null);
     return { ok: true };
+});
+
+// ---------------------------------------------------------------------------
+// IPC: 工作区
+// ---------------------------------------------------------------------------
+function openWorkspaceRoot(root) {
+    const ret = workspaceManager.open(root);
+    if (!ret.ok) return ret;
+    addRecentWorkspace(ret.meta.root);
+    return ret;
+}
+
+ipcMain.handle('editbox.workspaceOpenDialog', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
+    if (result.canceled || !result.filePaths[0]) return { ok: false, canceled: true };
+    return openWorkspaceRoot(result.filePaths[0]);
+});
+
+ipcMain.handle('editbox.workspaceOpen', (_e, root) => openWorkspaceRoot(root));
+
+ipcMain.handle('editbox.workspaceClose', () => {
+    workspaceManager.close();
+    return { ok: true };
+});
+
+ipcMain.handle('editbox.workspaceState', () => workspaceManager.getState());
+
+ipcMain.handle('editbox.workspaceIndex', () => workspaceManager.getIndex());
+
+ipcMain.handle('editbox.workspaceRefresh', () => {
+    workspaceManager.refresh();
+    return { ok: true };
+});
+
+ipcMain.handle('editbox.workspaceRecentGet', () => readRecentWorkspaces());
+
+ipcMain.handle('editbox.workspaceRecentRemove', (_e, root) => {
+    removeRecentWorkspace(root);
+    return { ok: true };
+});
+
+ipcMain.handle('editbox.workspaceRecentClear', () => {
+    clearRecentWorkspaces();
+    return { ok: true };
+});
+
+// ---------------------------------------------------------------------------
+// IPC: 项目
+// ---------------------------------------------------------------------------
+ipcMain.handle('editbox.projectList', () => projects.list());
+
+ipcMain.handle('editbox.projectSave', (_e, payload) => {
+    const data = payload && typeof payload === 'object' ? payload : {};
+    const meta = workspaceManager.getMeta();
+    const root = data.root || (meta ? meta.root : null);
+    return projects.save({ root, name: data.name });
+});
+
+ipcMain.handle('editbox.projectOpen', (_e, payload) => {
+    const data = payload && typeof payload === 'object' ? payload : {};
+    return projects.open(data.id);
+});
+
+ipcMain.handle('editbox.projectRemove', (_e, payload) => {
+    const data = payload && typeof payload === 'object' ? payload : {};
+    return projects.remove(data.id);
+});
+
+ipcMain.handle('editbox.projectRename', (_e, payload) => {
+    const data = payload && typeof payload === 'object' ? payload : {};
+    return projects.rename(data.id, data.name);
 });
 
 // ---------------------------------------------------------------------------
@@ -329,8 +504,17 @@ ipcMain.handle('editbox.performClose', () => {
     // 正常关闭：保留会话中仍引用的备份（未命名脏文档下次恢复），清理孤儿备份，写 cleanShutdown
     try {
         const sessionStore = getStore('session');
-        const tabs = sessionStore.get('tabs') || [];
-        const keep = new Set(tabs.filter(t => t.backupId).map(t => t.backupId));
+        const contexts = sessionStore.get('contexts');
+        const keep = new Set();
+        if (contexts && typeof contexts === 'object') {
+            for (const key of Object.keys(contexts)) {
+                const snapshot = contexts[key];
+                const tabs = snapshot && Array.isArray(snapshot.tabs) ? snapshot.tabs : [];
+                for (const tab of tabs) {
+                    if (tab && tab.backupId) keep.add(tab.backupId);
+                }
+            }
+        }
         const dir = backupDir();
         if (fs.existsSync(dir)) {
             for (const name of fs.readdirSync(dir)) {
@@ -366,8 +550,8 @@ ipcMain.handle('editbox.settingsGetAll', () => {
 ipcMain.handle('editbox.settingsSet', (_e, key, value) => {
     try {
         getStore('settings').set(key, value);
-        // 语言变更：即时重建原生菜单（无需重启）
-        if (key === 'localeMode') rebuildMenu();
+        // 语言变更与侧栏显隐：即时重建原生菜单（无需重启）
+        if (key === 'localeMode' || key === 'showSidebar') rebuildMenu();
         // 通知主窗口应用设置（字体/换行/行号/主题等）
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('editbox.settingApplied', key, value);
@@ -547,6 +731,10 @@ const MENU_I18N = {
         language: '语言(&L)(L)', options: '选项(&O)(O)', help: '帮助(&H)(H)',
         new: '新建(&N)', open: '打开...(&O)', save: '保存(&S)', saveAs: '另存为...(&A)',
         recent: '最近打开(&E)', noRecent: '（无最近文件）', clearRecent: '清除最近记录',
+        openFolder: '打开文件夹...(&D)', recentWorkspaces: '最近工作区(&W)',
+        noRecentWorkspaces: '（无最近工作区）', clearRecentWorkspaces: '清除最近工作区',
+        saveProject: '保存项目...(&P)', openProject: '打开项目...(&J)',
+        closeWorkspace: '关闭工作区(&K)', sidebar: '主侧栏(&B)', explorer: '文件浏览器(&E)',
         reload: '重新载入(&R)', close: '关闭(&C)', closeOthers: '关闭其他(&T)', closeAll: '全部关闭(&L)',
         exit: '退出(&X)',
         undo: '撤销(&U)', redo: '重做(&R)', cut: '剪切(&T)', copy: '复制(&C)', paste: '粘贴(&P)',
@@ -564,6 +752,10 @@ const MENU_I18N = {
         language: 'Language(&L)(L)', options: 'Options(&O)(O)', help: 'Help(&H)(H)',
         new: 'New(&N)', open: 'Open...(&O)', save: 'Save(&S)', saveAs: 'Save As...(&A)',
         recent: 'Recent Files(&E)', noRecent: '(No Recent Files)', clearRecent: 'Clear Recent Files',
+        openFolder: 'Open Folder...(&D)', recentWorkspaces: 'Recent Workspaces(&W)',
+        noRecentWorkspaces: '(No Recent Workspaces)', clearRecentWorkspaces: 'Clear Recent Workspaces',
+        saveProject: 'Save Project...(&P)', openProject: 'Open Project...(&J)',
+        closeWorkspace: 'Close Workspace(&K)', sidebar: 'Primary Sidebar(&B)', explorer: 'Explorer(&E)',
         reload: 'Reload(&R)', close: 'Close(&C)', closeOthers: 'Close Others(&T)', closeAll: 'Close All(&L)',
         exit: 'Exit(&X)',
         undo: 'Undo(&U)', redo: 'Redo(&R)', cut: 'Cut(&T)', copy: 'Copy(&C)', paste: 'Paste(&P)',
@@ -628,9 +820,25 @@ function buildRecentItems(M) {
     return items;
 }
 
+function buildRecentWorkspaceItems(M) {
+    const roots = readRecentWorkspaces();
+    if (roots.length === 0) {
+        return [{ label: M.noRecentWorkspaces, enabled: false }];
+    }
+    const items = roots.map((root) => ({
+        label: `${path.basename(root)}  —  ${root}`.replace(/&/g, '&&'),
+        click: sendAction('workspace.openRecent', root)
+    }));
+    items.push({ type: 'separator' });
+    items.push({ label: M.clearRecentWorkspaces, click: clearRecentWorkspaces });
+    return items;
+}
+
 function buildMenu() {
     const settings = getStore('settings');
     const wordWrap = settings.get('wordWrap') !== false; // 默认开
+    const showSidebar = settings.get('showSidebar') !== false; // 默认开
+    const hasWorkspace = Boolean(workspaceManager.getMeta());
     const lineNumbers = settings.get('lineNumbers') !== false; // 默认开
     const showWhitespace = settings.get('showWhitespace') === true;
     const showEol = settings.get('showEol') === true;
@@ -644,7 +852,13 @@ function buildMenu() {
             submenu: [
                 { label: M.new, accelerator: 'CmdOrCtrl+N', click: sendAction('file.new') },
                 { label: M.open, accelerator: 'CmdOrCtrl+O', click: sendAction('file.open') },
+                { label: M.openFolder, accelerator: 'CmdOrCtrl+Shift+O', click: sendAction('workspace.openFolder') },
                 { label: M.recent, submenu: buildRecentItems(M) },
+                { label: M.recentWorkspaces, submenu: buildRecentWorkspaceItems(M) },
+                { type: 'separator' },
+                { label: M.saveProject, enabled: hasWorkspace, click: sendAction('workspace.saveProject') },
+                { label: M.openProject, accelerator: 'Shift+Alt+P', click: sendAction('workspace.openProject') },
+                { label: M.closeWorkspace, enabled: hasWorkspace, click: sendAction('workspace.close') },
                 { type: 'separator' },
                 { label: M.save, accelerator: 'CmdOrCtrl+S', click: sendAction('file.save') },
                 { label: M.saveAs, accelerator: 'CmdOrCtrl+Shift+S', click: sendAction('file.saveAs') },
@@ -686,6 +900,15 @@ function buildMenu() {
                 { label: M.zoomIn, accelerator: 'CmdOrCtrl+=', click: sendAction('view.zoomIn') },
                 { label: M.zoomOut, accelerator: 'CmdOrCtrl+-', click: sendAction('view.zoomOut') },
                 { label: M.zoomReset, accelerator: 'CmdOrCtrl+0', click: sendAction('view.zoomReset') },
+                { label: M.explorer, accelerator: 'CmdOrCtrl+Shift+E', click: sendAction('view.explorer') },
+                {
+                    label: M.sidebar, type: 'checkbox', checked: showSidebar,
+                    accelerator: 'Ctrl+B',
+                    click: (item) => {
+                        getStore('settings').set('showSidebar', item.checked);
+                        sendAction('view.sidebar', item.checked)();
+                    }
+                },
                 { type: 'separator' },
                 {
                     label: M.wordWrap, type: 'checkbox', checked: wordWrap,

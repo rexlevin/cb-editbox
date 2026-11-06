@@ -71,13 +71,36 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenu));
 }
 .edit-tabs :deep(.el-tabs__header) {
     margin: 0;
+    /* Element Plus 默认 height: var(--el-tabs-header-height)（40px），
+       多行标签会溢出到编辑区；这里改为随标签行数自适应 */
+    height: auto;
+    align-items: flex-start;
     border-bottom: 1px solid var(--el-border-color);
     background: var(--el-fill-color-dark);
 }
+/* 标签多行展示：隐藏滚动箭头，标签按行换行 */
+.edit-tabs :deep(.el-tabs__nav-wrap),
+.edit-tabs :deep(.el-tabs__nav-scroll) {
+    overflow: visible;
+}
+/* 标签溢出时 Element Plus 会给 nav-wrap 加 20px 内边距（为滚动箭头留位置），多行模式下取消 */
+.edit-tabs :deep(.el-tabs__nav-wrap.is-scrollable) {
+    padding: 0;
+}
+.edit-tabs :deep(.el-tabs__nav-next),
+.edit-tabs :deep(.el-tabs__nav-prev) {
+    display: none;
+}
 .edit-tabs :deep(.el-tabs__nav) {
+    display: flex;
+    flex-wrap: wrap;
+    white-space: normal;
+    float: none;
+    transform: none !important;
     border: none;
 }
 .edit-tabs :deep(.el-tabs__item) {
+    white-space: nowrap;
     height: 34px;
     line-height: 34px;
     font-family: var(--tab-font-family, inherit);

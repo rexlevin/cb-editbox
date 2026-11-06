@@ -9,6 +9,10 @@
  *   - recentGet() / recentAdd(path) / recentRemove(path)
  *   - saveBackup({path, content})
  *   - sessionGet() / sessionUpdate(payload)
+ *   - openWorkspaceDialog() / openWorkspace(root) / closeWorkspace()
+ *   - getWorkspaceState() / getWorkspaceIndex() / refreshWorkspace()
+ *   - workspaceRecentGet() / workspaceRecentRemove(root) / workspaceRecentClear()
+ *   - projectList() / projectSave(payload) / projectOpen(payload) / projectRemove(payload) / projectRename(payload)
  *   - watchRegister(path, mtimeMs, size) / watchUnregister(path)
  *   - zoomGet() / zoomSet(factor) / zoomFactor()
  *   - pathForFile(file)  拖拽文件 → 绝对路径（Electron 32+ 移除 File.path）
@@ -43,6 +47,22 @@ contextBridge.exposeInMainWorld('editbox', {
 
     sessionGet: () => ipcRenderer.invoke('editbox.sessionGet'),
     sessionUpdate: (payload) => ipcRenderer.invoke('editbox.sessionUpdate', payload),
+
+    openWorkspaceDialog: () => ipcRenderer.invoke('editbox.workspaceOpenDialog'),
+    openWorkspace: (root) => ipcRenderer.invoke('editbox.workspaceOpen', root),
+    closeWorkspace: () => ipcRenderer.invoke('editbox.workspaceClose'),
+    getWorkspaceState: () => ipcRenderer.invoke('editbox.workspaceState'),
+    getWorkspaceIndex: () => ipcRenderer.invoke('editbox.workspaceIndex'),
+    refreshWorkspace: () => ipcRenderer.invoke('editbox.workspaceRefresh'),
+    workspaceRecentGet: () => ipcRenderer.invoke('editbox.workspaceRecentGet'),
+    workspaceRecentRemove: (root) => ipcRenderer.invoke('editbox.workspaceRecentRemove', root),
+    workspaceRecentClear: () => ipcRenderer.invoke('editbox.workspaceRecentClear'),
+
+    projectList: () => ipcRenderer.invoke('editbox.projectList'),
+    projectSave: (payload) => ipcRenderer.invoke('editbox.projectSave', payload),
+    projectOpen: (payload) => ipcRenderer.invoke('editbox.projectOpen', payload),
+    projectRemove: (payload) => ipcRenderer.invoke('editbox.projectRemove', payload),
+    projectRename: (payload) => ipcRenderer.invoke('editbox.projectRename', payload),
 
     watchRegister: (filePath, mtimeMs, size) =>
         ipcRenderer.invoke('editbox.watchRegister', filePath, mtimeMs, size),
@@ -79,6 +99,12 @@ contextBridge.exposeInMainWorld('editbox', {
     },
     onSettingApplied: (cb) => {
         ipcRenderer.on('editbox.settingApplied', (_e, key, value) => cb(key, value));
+    },
+    onWorkspaceChanged: (cb) => {
+        ipcRenderer.on('editbox.workspaceChanged', (_e, meta) => cb(meta));
+    },
+    onWorkspaceIndexUpdated: (cb) => {
+        ipcRenderer.on('editbox.workspaceIndexUpdated', (_e, snapshot) => cb(snapshot));
     },
 
     storeGet: (name, key) => ipcRenderer.invoke('canbox.store.get', name, key),

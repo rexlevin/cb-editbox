@@ -115,7 +115,6 @@
     "workspace": {
         "sidebar": "Primary Sidebar",
         "explorer": "Explorer",
-        "hideSidebar": "Hide Primary Sidebar",
         "noWorkspace": "No folder opened",
         "openFolder": "Open Folder",
         "scanning": "Building file index…",

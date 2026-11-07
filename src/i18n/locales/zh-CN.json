@@ -115,7 +115,6 @@
     "workspace": {
         "sidebar": "主侧栏",
         "explorer": "文件浏览器",
-        "hideSidebar": "隐藏主侧栏",
         "noWorkspace": "尚未打开文件夹",
         "openFolder": "打开文件夹",
         "scanning": "正在建立索引…",

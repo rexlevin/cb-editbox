@@ -6,9 +6,6 @@
                 <el-button link :title="$t('workspace.refresh')" @click="onRefresh">
                     <el-icon><Refresh /></el-icon>
                 </el-button>
-                <el-button link :title="$t('workspace.hideSidebar')" @click="hide">
-                    <el-icon><Fold /></el-icon>
-                </el-button>
             </span>
         </header>
 
@@ -57,7 +54,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { Fold, Refresh } from '@element-plus/icons-vue';
+import { Refresh } from '@element-plus/icons-vue';
 import { useEditorStore } from '@/stores/editor';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { resolveFileIcon, resolveFolderIcon } from '@/utils/fileIcons';
@@ -164,10 +161,6 @@ async function openFolder() {
     await workspace.openDialog();
 }
 
-function hide() {
-    workspace.setSidebarVisible(false);
-}
-
 async function reselect() {
     await workspace.openDialog();
 }
@@ -196,7 +189,7 @@ async function closeWorkspace() {
     height: 32px;
     padding: 0 8px 0 12px;
     border-bottom: 1px solid var(--el-border-color-lighter);
-    font-size: 12px;
+    font-size: 17.28px;
     font-weight: 600;
     color: var(--el-text-color-primary);
 }
@@ -215,6 +208,8 @@ async function closeWorkspace() {
 .ft-actions .el-button {
     margin-left: 2px;
     padding: 2px;
+    /* 顶栏图标随文字一起再放大 20%（14px 基数 → 20.16px） */
+    font-size: 20.16px;
 }
 .ft-rows {
     flex: 1;

@@ -24,7 +24,8 @@ export const useWorkspaceStore = defineStore('workspace', {
         files: [],             // FileEntry[]
         index: { ...EMPTY_INDEX },
         error: null,           // 索引/根目录错误：null | 'ROOT_UNREADABLE'
-        sidebarVisible: true,
+        // 同步读取 localStorage 镜像作为首帧状态，避免启动时主侧栏先以默认显示再被隐藏造成闪烁
+        sidebarVisible: localStorage.getItem('editbox-show-sidebar') !== 'false',
         explorerFontSize: 13,   // 文件浏览器（主侧栏文件树）字号
         sidebarWidth: 260,      // 主侧栏宽度（px）
         projects: [],           // Project[]（含 exists 字段）
@@ -37,10 +38,11 @@ export const useWorkspaceStore = defineStore('workspace', {
             try {
                 const settings = await window.editbox.settingsGetAll();
                 this.sidebarVisible = settings.showSidebar !== false;
+                localStorage.setItem('editbox-show-sidebar', String(this.sidebarVisible));
                 this.explorerFontSize = parseInt(settings.explorerFontSize) || 13;
                 this.sidebarWidth = Math.min(600, Math.max(180, parseInt(settings.sidebarWidth) || 260));
             } catch (error) {
-                this.sidebarVisible = true;
+                // 读取失败时保留 localStorage 镜像中的状态
             }
             await this.loadProjects();
         },
@@ -158,6 +160,7 @@ export const useWorkspaceStore = defineStore('workspace', {
 
         async setSidebarVisible(visible) {
             this.sidebarVisible = Boolean(visible);
+            localStorage.setItem('editbox-show-sidebar', String(this.sidebarVisible));
             await window.editbox.settingsSet('showSidebar', this.sidebarVisible);
         },
 

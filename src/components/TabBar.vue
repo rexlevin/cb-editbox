@@ -1,5 +1,6 @@
 <template>
-    <div class="tabbar-wrap">
+    <div ref="wrapRef" class="tabbar-wrap"
+         @dragstart="onDragStart" @dragover="onDragOver" @drop="onDrop" @dragend="onDragEnd">
         <el-tabs
             :model-value="store.activeId"
             type="card"
@@ -30,11 +31,84 @@
 </template>
 
 <script setup>
-import { reactive, onMounted, onBeforeUnmount } from 'vue';
+import { reactive, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useEditorStore } from '@/stores/editor';
 
 const store = useEditorStore();
 const menu = reactive({ visible: false, x: 0, y: 0, tabId: null });
+const wrapRef = ref(null);
+let dragFromIndex = -1;
+
+function tabItems() {
+    return wrapRef.value ? Array.from(wrapRef.value.querySelectorAll('.el-tabs__item')) : [];
+}
+
+// Element Plus 渲染的标签项没有 draggable，挂载与增删/排序后统一补上
+function syncDraggableTabs() {
+    tabItems().forEach((el) => { el.draggable = true; });
+}
+
+watch(
+    () => store.tabs.map((tab) => tab.id),
+    async () => {
+        await nextTick();
+        syncDraggableTabs();
+    },
+    { deep: true }
+);
+
+function tabItemFromEvent(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    return target ? target.closest('.el-tabs__item') : null;
+}
+
+function onDragStart(event) {
+    const item = tabItemFromEvent(event);
+    if (!item) return;
+    dragFromIndex = tabItems().indexOf(item);
+    if (dragFromIndex === -1) return;
+    event.dataTransfer.effectAllowed = 'move';
+    // Firefox/Safari 必须设置数据才会真正开始拖拽
+    event.dataTransfer.setData('text/plain', String(dragFromIndex));
+    item.classList.add('tab-dragging');
+}
+
+function onDragOver(event) {
+    if (dragFromIndex < 0) return;
+    // 阻止默认行为以允许 drop
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+}
+
+function onDrop(event) {
+    if (dragFromIndex < 0) return;
+    event.preventDefault();
+    const item = tabItemFromEvent(event);
+    if (!item) {
+        resetDrag();
+        return;
+    }
+    const items = tabItems();
+    const overIndex = items.indexOf(item);
+    if (overIndex !== -1) {
+        const rect = item.getBoundingClientRect();
+        // 指针落在目标标签右半边时插到其后
+        let targetIndex = overIndex + (event.clientX > rect.left + rect.width / 2 ? 1 : 0);
+        if (targetIndex > dragFromIndex) targetIndex -= 1;
+        const tab = store.tabs[dragFromIndex];
+        if (tab && targetIndex !== dragFromIndex) store.moveTabTo(tab.id, targetIndex);
+    }
+    resetDrag();
+}
+
+function onDragEnd() {
+    resetDrag();
+}
+
+function resetDrag() {
+    dragFromIndex = -1;
+    tabItems().forEach((el) => el.classList.remove('tab-dragging'));
+}
 
 function openMenu(e, tab) {
     menu.x = e.clientX;
@@ -60,7 +134,10 @@ async function act(kind) {
     if (kind === 'closeAll') await store.confirmClose({ fromRequestClose: false });
 }
 
-onMounted(() => document.addEventListener('click', closeMenu));
+onMounted(() => {
+    document.addEventListener('click', closeMenu);
+    syncDraggableTabs();
+});
 onBeforeUnmount(() => document.removeEventListener('click', closeMenu));
 </script>
 
@@ -164,6 +241,10 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenu));
 .edit-tabs :deep(.el-tabs__content) {
     display: none;
 }
+/* 拖动排序中的标签视觉反馈 */
+.edit-tabs :deep(.el-tabs__item.tab-dragging) {
+    opacity: 0.55;
+}
 .dirty-dot {
     color: var(--el-color-warning);
 }
@@ -179,7 +260,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenu));
 }
 .ctx-item {
     padding: 6px 16px;
-    font-size: 13px;
+    font-size: 16.25px;
     cursor: pointer;
     user-select: none;
 }

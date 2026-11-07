@@ -572,6 +572,17 @@ export const useEditorStore = defineStore('editor', {
             this.persistSession();
         },
 
+        // 拖动标签页到指定位置（鼠标拖动排序）
+        moveTabTo(tabId, targetIndex) {
+            const idx = this.tabs.findIndex(t2 => t2.id === tabId);
+            if (idx === -1) return;
+            const target = Math.min(Math.max(0, targetIndex), this.tabs.length - 1);
+            if (target === idx) return;
+            const [tab] = this.tabs.splice(idx, 1);
+            this.tabs.splice(target, 0, tab);
+            this.persistSession();
+        },
+
         closeAll() {
             return this.confirmClose({ fromRequestClose: false });
         },

@@ -344,7 +344,7 @@ function startSidebarResize(event) {
 }
 
 // ---------------------------------------------------------------------------
-// 快捷键：Ctrl+Shift+P 打开命令面板；Ctrl+K 和弦（第二个键不再按 Ctrl）
+// 快捷键：Ctrl+K 和弦（第二个键不再按 Ctrl）
 // 注：Ctrl+P（快速打开文件 + > / : / @ 前缀模式）由 docs/cb-editbox-quick-open-design.md
 // 单独实现，此处不接管 Ctrl+P
 // ---------------------------------------------------------------------------
@@ -357,21 +357,9 @@ function resetChord() {
     chordTimer = null;
 }
 
-function openPicker(mode) {
-    projectPickerMode.value = mode;
-    projectPickerVisible.value = true;
-}
-
 function onGlobalKeydown(event) {
     const mod = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
-    // Ctrl+Shift+P：命令面板，等价于快速打开框输入 >
-    if (mod && event.shiftKey && !event.altKey && key === 'p') {
-        event.preventDefault();
-        resetChord();
-        openPicker('command');
-        return;
-    }
     if (!chordArmed) {
         if (mod && !event.altKey && !event.shiftKey && key === 'k' && !event.repeat) {
             event.preventDefault();
@@ -382,10 +370,14 @@ function onGlobalKeydown(event) {
     }
     resetChord();
     if (event.altKey || event.shiftKey) return;
-    // Ctrl+K 之后按 F（不带修饰键）：关闭工作区；M / O 由 LanguagePicker 处理
+    // Ctrl+K 之后按 F（不带修饰键）：关闭工作区；W: 全部关闭；M / O 由 LanguagePicker 处理
     if (key === 'f') {
         event.preventDefault();
         workspace.close();
+    } else if (key === 'w' && !mod) {
+        // 全部关闭（VS Code 风格 Ctrl+K, W；第二个键不再按 Ctrl）
+        event.preventDefault();
+        store.closeAll();
     }
 }
 

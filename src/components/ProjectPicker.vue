@@ -212,9 +212,10 @@ async function onKeydown(event) {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 12px;
+    padding: 12px 14px;
     border-bottom: 1px solid var(--el-border-color-lighter);
-    color: var(--el-text-color-secondary);
+    font-size: 16px;
+    color: var(--el-text-color-regular);
 }
 .pp-input {
     flex: 1;
@@ -222,7 +223,7 @@ async function onKeydown(event) {
     border: none;
     outline: none;
     background: transparent;
-    font-size: 14px;
+    font-size: 16px;
     color: var(--el-text-color-primary);
     font-family: inherit;
 }
@@ -247,12 +248,12 @@ async function onKeydown(event) {
 }
 .pp-cmd-icon {
     flex: none;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     border-radius: 3px;
     text-align: center;
-    font-size: 10px;
-    line-height: 16px;
+    font-size: 12px;
+    line-height: 20px;
     font-weight: 700;
     color: var(--el-color-primary);
     background: var(--el-color-primary-light-9);
@@ -263,42 +264,42 @@ async function onKeydown(event) {
     gap: 8px;
 }
 .pp-name {
-    font-size: 13px;
+    font-size: 15px;
     color: var(--el-text-color-primary);
 }
 .pp-tag {
     flex: none;
     padding: 0 5px;
     border-radius: 3px;
-    font-size: 10px;
-    line-height: 16px;
+    font-size: 11px;
+    line-height: 18px;
     color: var(--el-color-warning-dark-2);
     background: var(--el-color-warning-light-9);
 }
 .pp-missing {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--el-color-danger);
 }
 .pp-path {
     display: block;
-    margin-top: 2px;
-    font-size: 11px;
-    color: var(--el-text-color-secondary);
+    margin-top: 3px;
+    font-size: 13px;
+    color: var(--el-text-color-regular);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 .pp-empty {
     padding: 24px;
-    font-size: 13px;
-    color: var(--el-text-color-secondary);
+    font-size: 15px;
+    color: var(--el-text-color-regular);
     text-align: center;
 }
 .pp-foot {
     flex: none;
-    padding: 6px 12px;
+    padding: 8px 14px;
     border-top: 1px solid var(--el-border-color-lighter);
-    font-size: 11px;
-    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    color: var(--el-text-color-regular);
 }
 </style>

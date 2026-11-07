@@ -16,8 +16,16 @@ import { syntaxTree, language } from '@codemirror/language';
 import { Decoration, ViewPlugin, WidgetType, EditorView } from '@codemirror/view';
 import { StateField } from '@codemirror/state';
 import { getSearchQuery, searchPanelOpen } from '@codemirror/search';
-import katex from 'katex';
 import 'katex/dist/katex.min.css';
+
+// katex 体积较大（~270KB），仅在实际出现公式预览时才加载
+let katexModulePromise = null;
+function loadKatex() {
+    if (!katexModulePromise) {
+        katexModulePromise = import('katex').then(m => m.default);
+    }
+    return katexModulePromise;
+}
 
 const HIDE = Decoration.replace({});
 
@@ -240,14 +248,15 @@ class MathWidget extends WidgetType {
     toDOM() {
         const el = document.createElement('div');
         el.className = 'md-math-preview';
-        try {
+        el.textContent = this.tex;
+        loadKatex().then(katex => {
             el.innerHTML = katex.renderToString(this.tex, {
                 displayMode: true,
                 throwOnError: false
             });
-        } catch (e) {
-            el.textContent = this.tex;
-        }
+        }).catch(() => {
+            // 加载失败时保留源码文本
+        });
         return el;
     }
 }

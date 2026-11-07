@@ -1,7 +1,9 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
-import ElementPlus from 'element-plus';
-import 'element-plus/dist/index.css';
+// Element Plus 组件由 unplugin-vue-components 按需引入；
+// 这里只补充命令式 API（ElMessage / ElMessageBox）的样式与暗色变量
+import 'element-plus/es/components/message/style/css';
+import 'element-plus/es/components/message-box/style/css';
 import 'element-plus/theme-chalk/dark/css-vars.css';
 import App from './App.vue';
 import router from './router';
@@ -13,7 +15,6 @@ const app = createApp(App);
 app.use(createPinia());
 app.use(i18n);
 app.use(router);
-app.use(ElementPlus);
 app.mount('#app');
 
 // ====== 缩放（Ctrl+滚轮；Ctrl+=/-/0 由原生菜单 accelerator 接管） ======

@@ -4,25 +4,35 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
-## [Unreleased]
+## [0.1.0] - 2026-11-07
 
 ### feat | 新功能 / Features
 
-新增「打开文件夹」工作区：左侧活动栏、主侧栏文件浏览器、后台文件索引（2 万文件上限、内置忽略规则、截断提示）、最近工作区
+新增主侧栏与文件夹工作区：活动栏、文件浏览器、后台文件索引（2 万文件上限、内置忽略规则、截断提示）、最近工作区
 新增编辑上下文：打开 / 切换工作区时保存当前标签会话，关闭工作区后恢复默认上下文的标签，未保存内容不丢失
-新增「保存项目 / 打开项目 / 删除项目 / 重命名项目」，项目数据存于独立的 canbox-core store，`Shift+Alt+P` 项目选择器
+新增项目能力：保存项目 / 打开项目 / 删除项目 / 重命名项目，项目数据存于独立的 canbox-core store，`Shift+Alt+P` 打开项目选择器
 新增 `Ctrl+Shift+O` / `Ctrl+B` / `Shift+Alt+P` 快捷键
+新增标签页鼠标拖动排序
+新增 `Ctrl+K` 后按 `W` 全部关闭标签页（第二个键不按 Ctrl）
 
-Add open-folder workspaces with a file sidebar, a background file index (20k-file cap, built-in ignore rules, truncation notice) and recent workspaces
+Add the primary sidebar and folder workspaces: activity bar, file explorer, background file index (20k-file cap, built-in ignore rules, truncation notice) and recent workspaces
 Add editing contexts: tab sessions are saved per context, closing a workspace restores the default context tabs, and unsaved content is preserved
-Add save / open / delete / rename project, stored in a dedicated canbox-core store, with a `Shift+Alt+P` project picker
+Add project support: save / open / delete / rename project, stored in a dedicated canbox-core store, with a `Shift+Alt+P` project picker
 Add `Ctrl+Shift+O` / `Ctrl+B` / `Shift+Alt+P` shortcuts
+Add mouse drag-and-drop tab reordering
+Add close all tabs via `Ctrl+K` then `W` (the second key is pressed without Ctrl)
+
+### style | 样式 / Styling
+
+标签页右键菜单字号加大
+
+Enlarge the tab context menu font size
 
 ### build | 构建 / Build
 
-项目版本号更新至 0.0.11
+项目版本号更新至 0.1.0
 
-Bump project version to 0.0.11
+Bump project version to 0.1.0
 
 ## [0.0.10] - 2026-11-05
 

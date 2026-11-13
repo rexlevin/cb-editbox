@@ -131,7 +131,7 @@ const outlineTheme = EditorView.theme({
     '& .cm-em-outline-title': {
         flex: '1',
         minWidth: '0',
-        fontSize: '14px',
+        fontSize: '16.8px',
         fontWeight: '600',
         color: 'var(--el-text-color-secondary, inherit)',
         whiteSpace: 'nowrap',
@@ -171,7 +171,7 @@ const outlineTheme = EditorView.theme({
     },
     '& .cm-em-outline-item': {
         padding: '5px 10px',
-        fontSize: '15px',
+        fontSize: '18px',
         lineHeight: '1.55',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
@@ -188,7 +188,7 @@ const outlineTheme = EditorView.theme({
     },
     '& .cm-em-outline-empty': {
         padding: '10px 12px',
-        fontSize: '14px',
+        fontSize: '16.8px',
         color: 'var(--el-text-color-placeholder, inherit)',
         userSelect: 'none'
     }

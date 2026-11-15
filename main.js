@@ -651,6 +651,8 @@ function createWindow() {
         minWidth: 760,
         minHeight: 540,
         resizable: true,
+        // 首帧渲染完成后再显示窗口，避免窗口已出现但内容区白屏
+        show: false,
         title: 'EditBox',
         icon: path.join(__dirname, 'public', 'logo.png'),
         webPreferences: {
@@ -671,6 +673,11 @@ function createWindow() {
         mainWindow.loadFile(path.join(__dirname, 'build', 'index.html'));
     }
     mainWindow.webContents.on('did-finish-load', applySavedZoom);
+
+    // 首帧渲染完成后再显示窗口，避免窗口已出现但内容区白屏
+    mainWindow.once('ready-to-show', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+    });
 
     // 启动即标记"非正常关闭"：本进程内未走到 performClose 就消失 = 崩溃/被杀
     const sessionStore = getStore('session');

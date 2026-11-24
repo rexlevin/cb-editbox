@@ -75,10 +75,44 @@ const items = computed(() => {
     ];
 });
 
+// 模糊匹配：查询字符按顺序出现即可命中（如 mkdown 命中 markdown），并返回匹配分数用于排序
+// 返回 null 表示不匹配；分数越高越靠前
+function fuzzyScore(search, q) {
+    const exact = search.indexOf(q);
+    if (exact !== -1) {
+        // 连续子串命中优先，且越靠前越好
+        return 1000 - exact + (search.startsWith(q) ? 500 : 0);
+    }
+    let from = 0;
+    let score = 0;
+    let streak = 0;
+    for (const ch of q) {
+        const found = search.indexOf(ch, from);
+        if (found === -1) return null;
+        if (found === from) {
+            // 与上一个命中相邻，连续命中加分
+            streak += 1;
+            score += 10 + streak * 5;
+        } else {
+            streak = 0;
+            score += Math.max(1, 6 - (found - from));
+        }
+        from = found + 1;
+    }
+    return score;
+}
+
 const filtered = computed(() => {
     const q = query.value.trim().toLowerCase();
     if (!q) return items.value;
-    return items.value.filter(item => item.search.includes(q));
+    const matches = [];
+    for (const item of items.value) {
+        const score = fuzzyScore(item.search, q);
+        if (score !== null) matches.push({ item, score });
+    }
+    // 同分时保持原有字母序（Array.prototype.sort 稳定）
+    matches.sort((a, b) => b.score - a.score);
+    return matches.map(m => m.item);
 });
 
 watch(query, () => { activeIndex.value = 0; });

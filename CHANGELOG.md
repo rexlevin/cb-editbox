@@ -4,6 +4,46 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [0.1.1] - 2026-11-24
+
+### feat | 新功能 / Features
+
+语言选择器支持模糊搜索，例如输入 mkdown 即可匹配 Markdown
+窗口首帧渲染完成后再显示，避免启动白屏
+
+Language picker supports fuzzy search, e.g. typing mkdown matches Markdown
+Show the window only after the first frame is rendered to avoid a blank startup screen
+
+### fix | 问题修复 / Bug Fixes
+
+修复页面加载失败时应用窗口无法显示的问题
+
+Fix the app window not being shown when page loading fails
+
+### refactor | 重构 / Refactoring
+
+重构语言选择器与工程选择器，复用统一的快速选择浮层样式，保证位置、尺寸与外观一致
+优化 Element Plus 按需引入，延迟加载 KaTeX 以减小打包体积
+
+Refactor the language and project pickers to share the quick-pick overlay style, keeping position, size and appearance consistent
+Optimize Element Plus on-demand imports and lazy-load KaTeX to reduce bundle size
+
+### style | 样式 / Styling
+
+调整大纲组件的字体大小，优化显示效果
+
+Adjust the outline component font size for better readability
+
+### build | 构建 / Build
+
+更新项目版本号至 0.1.1
+新增 Windows 平台 Electron 打包命令及配置
+修改 electron-builder 打包命令参数
+
+Bump project version to 0.1.1
+Add Windows Electron packaging command and configuration
+Adjust electron-builder packaging command arguments
+
 ## [0.1.0] - 2026-11-07
 
 ### feat | 新功能 / Features

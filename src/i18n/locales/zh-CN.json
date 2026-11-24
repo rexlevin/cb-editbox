@@ -68,7 +68,8 @@
     "picker": {
         "placeholder": "输入语言名称或扩展名",
         "current": "当前",
-        "noResult": "无匹配语言"
+        "noResult": "无匹配语言",
+        "hint": "↑↓ 选择 · Enter 确认 · Esc 关闭"
     },
     "empty": {
         "hint": "将文件拖拽到此处，或按 Ctrl+O 打开",

@@ -1,15 +1,15 @@
 <template>
-    <div v-if="visible" class="pp-mask" @mousedown.self="close">
-        <div class="pp-panel">
-            <div class="pp-search">
+    <div v-if="visible" class="qp-mask" @mousedown.self="close">
+        <div class="qp-panel">
+            <div class="qp-search">
                 <el-icon><Search /></el-icon>
-                <input ref="inputRef" v-model="query" class="pp-input"
+                <input ref="inputRef" v-model="query" class="qp-input"
                        :placeholder="commandMode ? $t('project.commandPlaceholder') : $t('project.filterPlaceholder')"
                        @keydown="onKeydown" />
             </div>
-            <ul v-if="filtered.length > 0" class="pp-list">
+            <ul v-if="filtered.length > 0" class="qp-list">
                 <li v-for="(item, idx) in filtered" :key="item.action || item.root"
-                    class="pp-item" :class="{ active: idx === activeIndex, missing: !item.exists }"
+                    class="qp-item" :class="{ active: idx === activeIndex, missing: !item.exists }"
                     @mouseenter="activeIndex = idx" @click="choose(item)">
                     <div v-if="item.command" class="pp-main">
                         <span class="pp-cmd-icon">{{ item.icon }}</span>
@@ -23,8 +23,8 @@
                     <span v-if="!item.command" class="pp-path" :title="item.root">{{ item.root }}</span>
                 </li>
             </ul>
-            <div v-else class="pp-empty">{{ commandMode ? $t('project.noCommands') : $t('project.noProjects') }}</div>
-            <footer class="pp-foot">{{ $t('project.pickerHint') }}</footer>
+            <div v-else class="qp-empty">{{ commandMode ? $t('project.noCommands') : $t('project.noProjects') }}</div>
+            <footer class="qp-foot">{{ $t('project.pickerHint') }}</footer>
         </div>
     </div>
 </template>
@@ -185,64 +185,6 @@ async function onKeydown(event) {
 </script>
 
 <style scoped>
-.pp-mask {
-    position: fixed;
-    inset: 0;
-    z-index: 2600;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: 12vh;
-    background: rgba(0, 0, 0, 0.12);
-}
-.pp-panel {
-    width: 640px;
-    max-width: calc(100vw - 48px);
-    max-height: 60vh;
-    display: flex;
-    flex-direction: column;
-    background: var(--el-bg-color-overlay);
-    border: 1px solid var(--el-border-color);
-    border-radius: 6px;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
-    overflow: hidden;
-}
-.pp-search {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--el-border-color-lighter);
-    font-size: 16px;
-    color: var(--el-text-color-regular);
-}
-.pp-input {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    outline: none;
-    background: transparent;
-    font-size: 16px;
-    color: var(--el-text-color-primary);
-    font-family: inherit;
-}
-.pp-list {
-    flex: 1;
-    min-height: 0;
-    margin: 0;
-    padding: 4px 0;
-    list-style: none;
-    overflow: auto;
-}
-.pp-item {
-    padding: 6px 12px;
-    cursor: pointer;
-    user-select: none;
-}
-.pp-item.active {
-    background: var(--el-fill-color);
-}
 .pp-item.missing {
     opacity: 0.6;
 }
@@ -288,18 +230,5 @@ async function onKeydown(event) {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-.pp-empty {
-    padding: 24px;
-    font-size: 15px;
-    color: var(--el-text-color-regular);
-    text-align: center;
-}
-.pp-foot {
-    flex: none;
-    padding: 8px 14px;
-    border-top: 1px solid var(--el-border-color-lighter);
-    font-size: 12px;
-    color: var(--el-text-color-regular);
 }
 </style>

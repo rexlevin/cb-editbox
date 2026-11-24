@@ -1,29 +1,33 @@
 <template>
-    <div v-if="open" class="lp-overlay" @mousedown.self="close">
-        <div class="lp-panel">
-            <input
-                ref="inputEl"
-                v-model="query"
-                class="lp-input"
-                :placeholder="t('picker.placeholder')"
-                spellcheck="false"
-                autocomplete="off"
-                @keydown="onInputKeydown"
-            />
-            <ul ref="listEl" class="lp-list">
+    <div v-if="open" class="qp-mask" @mousedown.self="close">
+        <div class="qp-panel">
+            <div class="qp-search">
+                <el-icon><Search /></el-icon>
+                <input
+                    ref="inputEl"
+                    v-model="query"
+                    class="qp-input"
+                    :placeholder="t('picker.placeholder')"
+                    spellcheck="false"
+                    autocomplete="off"
+                    @keydown="onInputKeydown"
+                />
+            </div>
+            <ul ref="listEl" class="qp-list">
                 <li
                     v-for="(item, i) in filtered"
                     :key="item.key"
-                    class="lp-item"
+                    class="qp-item lp-item"
                     :class="{ active: i === activeIndex }"
                     @mousedown.prevent="choose(item)"
-                    @mousemove="activeIndex = i"
+                    @mouseenter="activeIndex = i"
                 >
                     <span class="lp-label">{{ item.label }}</span>
                     <span v-if="item.name === current" class="lp-current">{{ t('picker.current') }}</span>
                 </li>
-                <li v-if="filtered.length === 0" class="lp-empty">{{ t('picker.noResult') }}</li>
+                <li v-if="filtered.length === 0" class="qp-empty">{{ t('picker.noResult') }}</li>
             </ul>
+            <footer class="qp-foot">{{ t('picker.hint') }}</footer>
         </div>
     </div>
 </template>
@@ -39,6 +43,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { Search } from '@element-plus/icons-vue';
 import { languages } from '@codemirror/language-data';
 
 const props = defineProps({
@@ -235,64 +240,19 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.lp-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 3000;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    background: rgba(0, 0, 0, 0.06);
-}
-.lp-panel {
-    margin-top: 10vh;
-    width: 520px;
-    max-width: calc(100vw - 40px);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: var(--el-bg-color-overlay, #fff);
-    border: 1px solid var(--el-border-color, #ddd);
-    border-radius: 6px;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
-}
-.lp-input {
-    height: 40px;
-    padding: 0 14px;
-    font-family: inherit;
-    font-size: 16px;
-    color: var(--el-text-color-primary, inherit);
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid var(--el-border-color-lighter, #eee);
-    outline: none;
-}
-.lp-list {
-    max-height: 46vh;
-    margin: 0;
-    padding: 4px 0;
-    overflow-y: auto;
-    list-style: none;
-}
 .lp-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 14px;
     font-size: 15px;
     color: var(--el-text-color-primary, inherit);
-    cursor: pointer;
 }
-.lp-item.active {
-    background: var(--el-color-primary-light-9, rgba(64, 158, 255, 0.12));
+.lp-label {
+    min-width: 0;
 }
 .lp-current {
+    flex: none;
     font-size: 12px;
-    color: var(--el-text-color-secondary, #909399);
-}
-.lp-empty {
-    padding: 12px 14px;
-    font-size: 15px;
     color: var(--el-text-color-secondary, #909399);
 }
 </style>

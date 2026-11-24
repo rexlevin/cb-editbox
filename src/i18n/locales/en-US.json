@@ -68,7 +68,8 @@
     "picker": {
         "placeholder": "Type a language name or extension",
         "current": "current",
-        "noResult": "No matching languages"
+        "noResult": "No matching languages",
+        "hint": "↑↓ Navigate · Enter Select · Esc Close"
     },
     "empty": {
         "hint": "Drag files here, or press Ctrl+O to open",
